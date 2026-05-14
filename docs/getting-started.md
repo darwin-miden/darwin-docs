@@ -152,17 +152,31 @@ All of these should be green today. They contain scaffolded Rust APIs and MASM s
 
 ## 6. Deploy Darwin to your testnet wallet
 
-> Coming with the M1 implementation phase. The deployment scripts live under `darwin-protocol/crates/darwin-protocol-account/src/bin/` once the Miden v0.14 toolchain is wired in. Pseudocode of what they do, for reference:
->
-> 1. Deploy the four custom asset faucets (`dETH`, `dWBTC`, `dUSDT`, `dDAI`).
-> 2. Deploy the oracle adapter, pointing at the current Pragma testnet oracle.
-> 3. For each of the three baskets (DCC, DAG, DCO):
->    - Deploy the basket faucet (`FungibleFaucet` + `agglayer_faucet` interface).
->    - Deploy the Darwin Protocol Account, ownership pointing at the basket faucet, oracle adapter slot populated.
-> 4. Optionally: submit `CONFIG_AGG_BRIDGE` notes to register the three basket faucets with the AggLayer bridge (requires bridge-admin coordination on public testnet, or use the local docker stack).
-> 5. Print the deployed account ids back into `darwin-baskets/manifests/*.toml` for the SDK to consume.
+A reproducible deployment recipe lives at [`darwin-infra/scripts/deploy-testnet.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/deploy-testnet.sh). It prints — and with `--execute` re-runs — every `miden` CLI call that materialised the 10+ Darwin accounts currently live on testnet:
 
-Until that lands, you can already deposit dummy tokens into a hand-deployed Miden wallet and walk through the architecture by reading [the M1 spec](m1-architecture-spec.md).
+```bash
+git clone git@github.com:darwin-miden/darwin-infra.git
+cd darwin-infra
+./scripts/deploy-testnet.sh                # dry-run: print the recipe
+./scripts/deploy-testnet.sh --execute      # actually deploy
+```
+
+To inspect the current public state without redeploying, the bundled testnet inventory parses `darwin-baskets/state/testnet.toml` and prints a single-screen summary:
+
+```bash
+git clone git@github.com:darwin-miden/darwin-baskets.git
+cd darwin-baskets
+cargo run --bin testnet_inventory
+```
+
+To see the off-chain rebalance planner output (M2 prep) for any of the three baskets:
+
+```bash
+git clone git@github.com:darwin-miden/darwin-sdk.git
+cd darwin-sdk/rust
+cargo run --bin rebalance_demo                       # all three at par
+cargo run --bin rebalance_demo -- DCC --skew 2.0     # one basket, perturbed
+```
 
 ---
 
