@@ -95,6 +95,10 @@ After those mints the user holds every constituent of every M1 basket (DCC, DAG,
 
 **Reproducible deploy recipe shipped.** [`darwin-infra/scripts/deploy-testnet.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/deploy-testnet.sh) prints — or, with `--execute`, replays — the exact `miden new-wallet` / `new-faucet` / `mint` / `send` sequence that materialised every account in `darwin-baskets/state/testnet.toml`. A grant reviewer can re-run it against the same testnet RPC with their own signing key and get the same 10-account topology.
 
+**Off-chain rebalance planner shipped (M2 prep).** [`darwin-sdk::rebalance`](https://github.com/darwin-miden/darwin-sdk/blob/main/rust/src/rebalance.rs) — 312 lines of Rust — mirrors the `darwin::drift` MASM library: given a basket manifest and a `ConstituentSnapshot` per asset, returns a `RebalancePlan` with the per-constituent drift and the list of `Buy` / `Sell` trades for any constituent above the manifest's `drift_threshold_bps`. Six new unit tests, 14 SDK tests total. Algorithmically identical to `asm/lib/drift.masm`, so the M2 on-chain rebalance trigger and the off-chain bot use the same formula.
+
+**Frontend rebalance module mirrors the SDK.** [`darwin-frontend/src/lib/rebalance.ts`](https://github.com/darwin-miden/darwin-frontend/blob/main/src/lib/rebalance.ts) ports the same planner to TypeScript so the M3 dashboard can render live drift without a Wasm round-trip. Type-checked via `npx tsc --noEmit`.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
