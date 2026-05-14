@@ -8,9 +8,9 @@ last_updated: 2026-05-14
 
 One-page audit of every M1 deliverable from the [signed grant proposal](https://github.com/darwin-miden/darwin-docs/blob/main/Grant_Proposal_Darwin_x_Miden.md) against what is actually shipped today.
 
-> **Update (breakthrough)**: the "ecosystem version skew" we earlier reported as a hard blocker for Flow A is **not real**. `miden-stdlib 0.19` ships `std::math::u64::div` with the matching event handler — fully compatible with `miden-objects 0.12`'s bundled v0.19 Assembler. Proof: see `darwin-protocol/crates/darwin-protocol-account/tests/v019_stdlib_path.rs`, both tests green. The path to Flow A atomic on testnet is now a 1–2 day implementation task, not a wait on Miden. Details in §5 below.
+> **Update (resolved)**: the "ecosystem version skew" we earlier reported as a hard blocker for Flow A was a misaligned dependency choice on our side. The workspace is now on `miden-assembly 0.22 + miden-core-lib 0.22`, which is the same line `miden-client 0.14` deploys against (via `miden-protocol 0.14.5`). A `miden_protocol::AccountComponent` containing real u64 division builds cleanly — proven by `protocol_0_14_path.rs`. Flow A atomic is now an implementation task: author the DepositNote script and call `miden_client::Client::add_account()`. No Miden release dependency.
 
-Summary: **all 6 deliverables are reachable on M1's timeline.** 5 are shipped today; the 6th has an implementation plan with hard evidence the path compiles.
+Summary: **all 6 deliverables are reachable on M1's timeline.** 5 are shipped today; the 6th has a fully proven compile path with the type miden-client consumes.
 
 ## Summary table
 
@@ -20,7 +20,7 @@ Summary: **all 6 deliverables are reachable on M1's timeline.** 5 are shipped to
 | 2 | Basket tokens mintable and burnable natively on Miden (3 baskets) | ✅ | 100 DCC + 100 DAG + 100 DCO minted from the Darwin basket-token faucets and consumed into the user wallet on testnet |
 | 3 | Pragma Oracle live on testnet with 3 token pairs (with fallback) | 🟡 | Adapter (Rust + MASM), live Pragma snapshot, fallback design + Falcon-512 key slot. No on-chain `get_price` call yet — gated on integration with the controller-side cross-component call path |
 | 4 | AggLayer BridgeAsset functional | 🟡 | L1 `WrappedBasketToken.sol` ships with 13 Foundry tests covering the full bridge-only mint/burn surface; SDK B2AGG / CLAIM helpers in Rust; no actual cross-chain transaction yet (bridge admin coordination + Miden node availability) |
-| 5 | Flow A end-to-end on testnet | 🟡→✅ in flight | Mint half and deposit half demonstrated on testnet as separate transactions; atomic single-note path **proven viable** via `std::math::u64::div` (miden-stdlib 0.19), 2 passing tests in `v019_stdlib_path.rs`. Migration to ship the atomic version is implementation work, no ecosystem dependency. |
+| 5 | Flow A end-to-end on testnet | 🟡→✅ in flight | Mint half + deposit half demonstrated on testnet as separate txs. Atomic single-note path **proven compilable end-to-end**: `protocol_0_14_path.rs::miden_protocol_0_14_account_component_with_real_u64_division` builds a `miden_protocol::AccountComponent` (the exact type `miden-client 0.14` deploys) from a controller that calls `darwin::math::felt_div` → `miden::core::math::u64::div` via miden-core-lib 0.22. Remaining work is `Client::add_account()` + author the DepositNote script; no compile-time or ecosystem blocker left. |
 | 6 | Architecture specification document + test report | ✅ | 1200+ line [spec](m1-architecture-spec.md), [progress log](m1-progress.md), [test report](m1-test-report.md). 161 tests workspace-wide, all green |
 
 ## Detail per deliverable
