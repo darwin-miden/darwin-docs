@@ -122,18 +122,28 @@ Done so far:
 | Deploy `DCO` basket-token faucet | ✅ | `0x9f2cfef38b0a8a29732ce5caf190e578b707e294d611e6f3f8919f50d7747906` |
 | Receive faucet tokens from `faucet.testnet.miden.io` to the test wallet | ✅ | `0xaafc6cb005744e27b990888aafbe0b87c864a995f3bb8d555d541c3b1891458a` |
 | Consume the faucet note locally (STARK-prove client-side) | ✅ | `0xda8eeee31bd901d71b70dc33a7ddac09d92b308eb6d3ab5aa46de332fbfda949` |
+| Deploy DCC Darwin Protocol Account (placeholder bodies, RegularAccountUpdatableCode) | ✅ | account `0xaa20da7d98c2e29022510aa786948f` |
+| Deploy DAG Darwin Protocol Account | ✅ | account `0x53c54781b7b091905a948b5e3f92fe` |
+| Deploy DCO Darwin Protocol Account | ✅ | account `0xa3a0e023381d709060a19527e73f95` |
+| Pool funding mints (9 mints, 3 baskets × 2–4 assets each) | ✅ | see `darwin-baskets/state/testnet.toml` `[[pool_funding]]` |
+| Create end-user wallet for Flow A demo (private storage) | ✅ | account `0xed3cd5befa3207805f8529207cfc0d` |
+| P2ID transfer team → user wallet (faucet token) | ✅ | `0xfe0a531e20900297ab6e29ad92cff71e3669dc6d727a76c3b66337043c116bea` |
+| Mint dETH into user wallet (Flow A constituent prep) | ✅ | `0xdf09fbe2607f42fdfe2faa8197c64a9b62e738af48061b7a45b236c4e2fec095` |
+| Mint dWBTC into user wallet | ✅ | `0x790dd4ce2ad2ac4a646a125c7859ccb143a745b15b320e9ad5aee5dddeae30d5` |
+| Mint dUSDT into user wallet | ✅ | `0x2cc1161138be967d0fd0e1ec134cede8a6c53a5fd929141e2c54ec08d020b309` |
+| Mint dDAI into user wallet | ✅ | `0x80bd5e309060aed8e95d71af73a32e601b06f894f3f0f9b7aaa4654194befba5` |
 
 Pending:
 
 | Scenario | Status |
 |---|---|
-| Deploy 3 Darwin Protocol Accounts on public testnet | Pending — version skew with miden-objects 0.12 |
 | Deploy Pragma oracle adapter on public testnet | Pending |
-| Mint DCC via public testnet `DepositNote` consumption | Pending |
-| Redeem DCC via public testnet `RedeemNote` consumption | Pending |
-| Same on DAG | Pending |
-| Same on DCO | Pending |
+| Mint DCC via public testnet `DepositNote` consumption | Pending — version skew |
+| Redeem DCC via public testnet `RedeemNote` consumption | Pending — version skew |
+| Same on DAG | Pending — version skew |
+| Same on DCO | Pending — version skew |
 | Deposit just before / after expiry | Pending |
+| Real procedure bodies in DCC/DAG/DCO controllers (replace placeholder pushes) | Pending — version skew |
 
 > **Note on the sync bug.** Between the mint transactions above and writing this section, the public Miden testnet node started returning a protobuf wire-type decode error on `sync_transactions` (`AccountId.id: NoteMetadataHeader.sender: ...: invalid wire type: SixtyFourBit (expected LengthDelimited)`). The deploying transactions are visible in the explorer; the local client is unable to consume the mint notes until the node ships a fix. The deployments themselves are unaffected.
 
