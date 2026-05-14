@@ -42,7 +42,18 @@ A short, week-by-week log of what has actually landed against the [M1 Architectu
 
 **Helpers spread across repos.** Basket lookup by symbol and faucet-alias deduplication (`darwin-baskets`); fresh-quote validation (`darwin-oracle-adapter`); hex round-trip for `EthAddress` (`darwin-bridge-adapter`); a `check-toolchain.sh` sanity script (`darwin-infra`); a static basket catalogue (`darwin-frontend`).
 
-**First on-chain artefact: `dETH` faucet deployed on public Miden testnet.** The first Darwin component to live on a public chain: a `FungibleFaucet` for `DETH` at account id `0xa095d9b3831e96206ff70c2218a6a9`, deployed via the `miden client new-account --account-type fungible-faucet` flow against `~/.miden/packages/basic-fungible-faucet.masp`. The deploying transaction (`0xd2645c81…c3909e7`) is client-side STARK-proven, submitted to the testnet node, and 1_000_000 base units were minted to the Darwin team test wallet (`0x5230eb6eb7ba5c8…`). Tracked authoritatively in `darwin-baskets/state/testnet.toml`. This is the proof-of-pipeline-end-to-end for M1 — every subsequent on-chain artefact (DAG / DCO faucets, protocol accounts, oracle adapter, bridge components) follows the same deployment path.
+**All four Darwin asset faucets deployed on public Miden testnet.** Every basket-constituent stand-in is now a real, public account on the Miden testnet:
+
+| Asset | Account ID | Decimals | Deploying tx |
+|---|---|---|---|
+| dETH  | `0xa095d9b3831e96206ff70c2218a6a9` | 18 | `0xd2645c81…c3909e7` |
+| dWBTC | `0x7a45cb24ada22120246bcf54196e12` | 8  | `0x33c2c024…19d72d99` |
+| dUSDT | `0xd3789f451ddd4720602ba9eb1a268d` | 6  | `0x32cd61c2…cae0f90a` |
+| dDAI  | `0xb526deb0408a29207e4f27ed57bf1a` | 18 | `0x2d534d2a…f7c8dfd0` |
+
+Each was deployed via `miden client new-account --account-type fungible-faucet` against `~/.miden/packages/basic-fungible-faucet.masp` and activated on-chain by an initial mint to the Darwin team test wallet (`0x5230eb6eb7ba5c8…`), client-side STARK-proven. Tracked authoritatively in [`darwin-baskets/state/testnet.toml`](https://github.com/darwin-miden/darwin-baskets/blob/main/state/testnet.toml). The faucet account IDs are now the canonical `FaucetId`s the SDK uses to construct deposit notes.
+
+This is the proof-of-pipeline-end-to-end for M1. Every subsequent on-chain artefact (the three protocol accounts, the basket-token faucets, the oracle adapter, the bridge wrappers) follows the same deployment path. The next gate is the M1 spec §5 protocol accounts, blocked on the `miden-objects` / `miden-assembly` version skew documented in `darwin-protocol/src/component.rs`.
 
 ## What is *not* shipped yet
 
