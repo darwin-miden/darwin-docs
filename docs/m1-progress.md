@@ -55,6 +55,22 @@ Each was deployed via `miden client new-account --account-type fungible-faucet` 
 
 This is the proof-of-pipeline-end-to-end for M1. Every subsequent on-chain artefact (the three protocol accounts, the basket-token faucets, the oracle adapter, the bridge wrappers) follows the same deployment path. The next gate is the M1 spec §5 protocol accounts, blocked on the `miden-objects` / `miden-assembly` version skew documented in `darwin-protocol/src/component.rs`.
 
+**Three basket-token faucets deployed (DCC, DAG, DCO).** Every M1 basket token now has a public on-chain account:
+
+| Basket | Faucet account ID | Decimals | Deploying tx |
+|---|---|---|---|
+| DCC | `0x2066f2da1f91ba202af5251d39101c` | 8 | `0x8da73c53…ed94843e15` |
+| DAG | `0xfb6811fd6399df206d44f62800620d` | 8 | `0x420d8bda…319367fbf5d` |
+| DCO | `0xbe4efc6729eb3220423b7d6d6a0942` | 8 | `0x9f2cfef3…50d7747906` |
+
+Currently owned by the Darwin team's signing key; ownership transfers to the corresponding protocol account once the version-skew unblocks (`miden::standards::access::ownable_two_step`).
+
+**Solidity wrapper (`WrappedBasketToken.sol`) compiles + tests under Foundry.** Eight passing tests (`forge test`) cover the bridge-only mint/burn surface, metadata fields, and the mint→burn round-trip. Ready to deploy on the local Anvil L1 from `darwin-infra` or on any AggLayer-connected testnet.
+
+**Pragma adapter Rust expanded.** New `darwin_oracle_adapter::pragma` module ships the live testnet feed list (`SUPPORTED_PAIRS`), the alias→pair mapping (`pragma_pair_for_alias`), a deterministic felt-id encoder (`pair_id_felt`), and a snapshot of the current testnet Pragma oracle ID. Four new unit tests, eight total in the crate.
+
+**`AccountComponent` compiles via the v0.19 path.** A self-contained `asm/controller_v0_19.masm` controller source compiles cleanly through `miden_objects::assembly::Assembler` (transitively `miden-assembly` 0.19) and yields an `AccountComponent` marked as `RegularAccountImmutableCode`-supporting. Procedure bodies are stubs (`push.0`) but the component is wire-compatible with `miden-client`'s `AccountBuilder` and demonstrates the deployment shape. The `deploy_m1` binary now exercises this for each of DCC / DAG / DCO and prints the green ticks.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
