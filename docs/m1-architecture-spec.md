@@ -1065,7 +1065,7 @@ Each scenario produces a Markdown test-report entry with proof logs and on-chain
 ### 13.1 Milestone 2 — Cross-Chain User UX, Rebalancing, Audit ($8k, 1.5 months)
 
 - **ETH user UX:** Near Intent + Miden Guardian relay wallet, building on the M1 AggLayer bridge primitives so an EVM-wallet user can deposit into a basket without ever creating a Miden wallet directly.
-- **Rebalancing engine:** drift detection (`compute_drift`) + execution on the **in-protocol Miden DEX** (per the proposal, "available before mainnet"), with the `cross-chain trading SDK` as fallback for low-liquidity scenarios.
+- **Rebalancing engine:** drift detection (`compute_drift`) + execution on the **in-protocol Miden DEX** (per the proposal, "available before mainnet"), with the `cross-chain trading SDK` as fallback for low-liquidity scenarios. M1 already ships the on-chain math (`darwin::drift` MASM library: `constituent_weight_bps`, `abs_drift_bps`, `needs_rebalance`) plus an off-chain mirror in Rust (`darwin_sdk::rebalance::plan`) and TypeScript (`darwin-frontend/src/lib/rebalance.ts`); M2 wires the trigger into a Flow B note script and connects it to the in-protocol DEX.
 - **Full Flow C UX for ETH users:** combine the M1 `RedeemNote` consumption (§6.5 / §7.2) with the Miden Guardian relay wallet so that an EVM-wallet user redeems from a basket in a single click and receives the underlyings on their EVM wallet via AggLayer bridge-out (~10–20 min). The Miden-side redemption primitives are M1; M2 chains them with Near Intent + the relay wallet to deliver the user-facing experience.
 - **Third-party audit** covering Darwin Protocol Account logic, MASM circuits, AggLayer integration code, and Near Intent interactions.
 - **Additional baskets if/when feeds become available** (e.g. DeFi Blue Chips contingent on UNI/AAVE/MKR Pragma feeds; Privacy Pack contingent on cross-chain primitives for ZEC/XMR). M1 already ships three baskets — M2/M3 can broaden the catalogue rather than back-fill it.
@@ -1205,9 +1205,13 @@ Authoritative inventory of every Darwin account that lives on the public Miden t
 
 The nine mint-to-controller transactions are itemised in `darwin-baskets/state/testnet.toml::[[pool_funding]]`.
 
-**Test wallet**: `0x5230eb6eb7ba5c80335a738beaf8bc` (Darwin team operator).
+**Test wallet** (Darwin team operator): `0x5230eb6eb7ba5c80335a738beaf8bc`.
+
+**User wallet** (Flow A end-user simulation, private storage): `0xed3cd5befa3207805f8529207cfc0d`. Holds 1 000 000 base units of the public Miden faucet plus 5 000 base units each of dETH / dWBTC / dUSDT / dDAI minted directly into it — enough to drive a complete wallet → controller deposit for any of DCC / DAG / DCO once the protocol-account bodies wire in. Mints and the P2ID transfer are itemised in `darwin-baskets/state/testnet.toml`.
 
 **Pragma oracle**: `0xd0e1384e21a6350029d80128eb5c44` (bech32 `mtst1argwzwzwyxnr2qpfmqqj366ugsax2t3x`). Not deployed by Darwin; observed via miden.pragma.build.
+
+**Reproducible deployment recipe**: [`darwin-infra/scripts/deploy-testnet.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/deploy-testnet.sh) prints — and with `--execute` re-runs — every `miden` CLI call that materialised the topology above.
 
 ## Appendix E — The Rust→Miden Account-Component Path
 
