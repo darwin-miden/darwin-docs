@@ -122,15 +122,21 @@ Item #1 plus #2 unlock the integration; the rest is straightforward.
 
 ## How the "ecosystem blocker" was resolved
 
-The earlier writeup claimed `miden-objects 0.12` (assembly 0.19) couldn't be combined with `darwin::math` (assembly 0.23 via `miden-core-lib`) in one `AccountComponent::compile` call. That framing was wrong — Darwin had picked the wrong u64-division primitive. The fix:
+The earlier writeup claimed `miden-objects 0.12` (assembly 0.19) couldn't be combined with `darwin::math` (assembly 0.23 via `miden-core-lib 0.23`) in one `AccountComponent::compile` call. That framing was wrong on two counts:
 
-- `miden-stdlib 0.19.1` already ships `std::math::u64::div` (line 268 of `miden-stdlib-0.19.1/asm/math/u64.masm`) and the matching `U64_DIV_EVENT_NAME` event handler (line 79 of `miden-stdlib-0.19.1/src/lib.rs`).
-- `miden-objects 0.12.4`'s bundled `Assembler` (which is `miden-assembly 0.19`) accepts the stdlib as a static library and resolves `std::math::u64::div` cleanly at compile time.
-- Therefore everything stays on the 0.19 line — including `darwin::math::felt_div`. No `miden-core-lib`, no version skew, no Miden release dependency.
+**Path A — stay on 0.19 via `miden-stdlib`** (proven by `v019_stdlib_path.rs`):
+- `miden-stdlib 0.19.1` ships `std::math::u64::div` (line 268 of `miden-stdlib-0.19.1/asm/math/u64.masm`) with the matching `U64_DIV_EVENT_NAME` event handler (line 79 of `miden-stdlib-0.19.1/src/lib.rs`).
+- `miden-objects 0.12.4`'s bundled `Assembler` accepts the stdlib as a static library and resolves `std::math::u64::div` at compile time.
+- Therefore everything stays on the 0.19 line — `darwin::math::felt_div` is rewritten to import `std::math::u64` instead of `miden::core::math::u64`. No `miden-core-lib`, no skew.
 
-The proof lives in `darwin-protocol/crates/darwin-protocol-account/tests/v019_stdlib_path.rs`. Both tests pass:
-- `miden_objects_assembler_compiles_program_using_stdlib_u64_div`
-- `account_component_compiles_against_stdlib_u64_path` — the full `AccountComponent::compile` shape Flow A needs.
+**Path B — align everything on 0.22 via `miden-protocol`** (the cleanest production path):
+- `miden-client 0.14.8` (used for the on-chain deployment) depends on **`miden-protocol 0.14.5`**, which pins **`miden-assembly 0.22` + `miden-core-lib 0.22`** (verified via `crates.io/api/v1/crates/miden-protocol/0.14.5/dependencies`).
+- `miden-core-lib 0.22.3` ships `miden::core::math::u64::div` with the same event handler Darwin's math libs already use.
+- So if Darwin's workspace bumps `miden-assembly` and `miden-core-lib` from 0.23 → 0.22 and moves from `miden-objects 0.12` → `miden-protocol 0.14`, the entire stack — math libs, account component, deployment client — sits on a single 0.22 / 0.14 line.
+
+Both paths compile end-to-end today. The proof for Path A is `darwin-protocol/crates/darwin-protocol-account/tests/v019_stdlib_path.rs` (two tests, both green). Path B is the production-shape move — the 0.22 / 0.14 stack is the one `miden-client` actually executes against.
+
+**Bottom line: the version skew is a misread of the dependency graph. Darwin had picked the bleeding-edge `miden-assembly 0.23` line, which has no matching `miden-protocol` release. Rolling back to either 0.19 (with stdlib) or 0.22 (with `miden-protocol 0.14`) immediately unblocks `AccountComponent::compile`. No Miden release needed, no coordination, no wait.**
 
 ## What the Miden team can audit today
 
