@@ -30,9 +30,17 @@ A short, week-by-week log of what has actually landed against the [M1 Architectu
 
 **Build pipeline.** `build.rs` parses every MASM module under `asm/lib/` and emits two artefacts (`darwin-primitives.masl`, `darwin-flow.masl`) to `$OUT_DIR`, which the crate `include_bytes!`s. Public helpers `primitives_library()` and `flow_library()` return runtime `Library` handles that downstream tests and the deployment binary can attach to any `Assembler`.
 
-**Test coverage.** 57 tests across the workspace, all green: 43 are real MASM executed through `miden-vm` 0.23 with the `miden-core-lib` u64-division event handler registered on the host. `cargo clippy -D warnings` clean across every crate.
+**Test coverage.** 60+ tests across the workspace, all green: ~46 are real MASM executed through `miden-vm` 0.23 with the `miden-core-lib` u64-division event handler registered on the host. `cargo clippy -D warnings` clean across every crate.
 
 **Math libraries' `darwin-baskets` integration.** All three M1 baskets (DCC, DAG, DCO) drive their procedure calls from the manifests in `darwin-baskets/manifests/*.toml`, validated by the basket loader.
+
+**Round-trip invariants.** A new `tests/round_trip_masm.rs` integration suite asserts the deposit-then-redeem identity at par-state (zero fees) and the expected ~30 bps loss when both legs charge the standard fee. Validates that the mint and redeem libraries compose correctly across their MASM boundaries.
+
+**SDK request validation.** `darwin-sdk`'s `DepositRequest` now carries the user's recipient wallet, distinguishes resolved-vs-unresolved basket handles (cargo `with_protocol_account` / `with_basket_token_faucet` setters), and refuses placeholder or duplicate asset entries before constructing a note. Mirrored by `darwin-notes` which exposes the on-chain `DepositNoteInputs` / `RedeemNoteInputs` shapes.
+
+**CI everywhere.** Every Rust repo (`darwin-baskets`, `darwin-oracle-adapter`, `darwin-bridge-adapter`, `darwin-protocol`, `darwin-sdk`) has GitHub Actions running fmt + clippy + test on every push and PR. `darwin-infra` lints shell scripts and validates the docker-compose. `darwin-frontend` type-checks and lints. Dependabot is enabled across all repos.
+
+**Helpers spread across repos.** Basket lookup by symbol and faucet-alias deduplication (`darwin-baskets`); fresh-quote validation (`darwin-oracle-adapter`); hex round-trip for `EthAddress` (`darwin-bridge-adapter`); a `check-toolchain.sh` sanity script (`darwin-infra`); a static basket catalogue (`darwin-frontend`).
 
 ## What is *not* shipped yet
 
