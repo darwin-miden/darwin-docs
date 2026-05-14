@@ -1109,7 +1109,11 @@ Darwin's post-launch GTM is structured around these thresholds; the first target
 | `dUSDT` | `USDT/USD` | 8 | 3 | DCC, DCO |
 | `dDAI` | `DAI/USD` | 8 | 3 | DCO |
 
-Pragma oracle account address on Miden testnet (subject to reset between iterations): `0xec7e450b91bf690015ad79573689f1` (snapshot 2026-05-14; the adapter resolves dynamically).
+Pragma oracle account address on Miden testnet (subject to reset between iterations):
+- hex: `0xd0e1384e21a6350029d80128eb5c44`
+- bech32: `mtst1argwzwzwyxnr2qpfmqqj366ugsax2t3x`
+
+Snapshot 2026-05-14 from <https://miden.pragma.build>; the adapter resolves dynamically.
 
 **Basket compositions (summary):**
 
@@ -1161,6 +1165,85 @@ All three baskets share: 5% drift threshold, 0.30% mint fee, 0.30% redeem fee, 1
 | **UPDATE_GER** | Note that registers a new Global Exit Root in the bridge's `ger_map`; sent by the GER manager |
 | **LET** | Local Exit Tree — the Keccak-256 incremental Merkle tree maintained by the AggLayer bridge account on Miden |
 | **GER** | Global Exit Root — a Poseidon2 commitment representing exit-tree state across all AggLayer-connected chains |
+
+## Appendix D — Public Miden Testnet Deployments
+
+Authoritative inventory of every Darwin account that lives on the public Miden testnet at the time of M1 implementation work. The TOML source of truth is [`darwin-baskets/state/testnet.toml`](https://github.com/darwin-miden/darwin-baskets/blob/main/state/testnet.toml).
+
+**Asset faucets** (FungibleFaucet, public storage):
+
+| Asset | Account id | Decimals | Deploying tx |
+|---|---|---|---|
+| dETH | `0xa095d9b3831e96206ff70c2218a6a9` | 18 | `0xd2645c81…c3909e7` |
+| dWBTC | `0x7a45cb24ada22120246bcf54196e12` | 8 | `0x33c2c024…19d72d99` |
+| dUSDT | `0xd3789f451ddd4720602ba9eb1a268d` | 6 | `0x32cd61c2…cae0f90a` |
+| dDAI | `0xb526deb0408a29207e4f27ed57bf1a` | 18 | `0x2d534d2a…f7c8dfd0` |
+
+**Basket-token faucets** (FungibleFaucet, public storage, owned by the Darwin team's signing key until ownership transfers to the corresponding protocol account):
+
+| Symbol | Account id | Deploying tx |
+|---|---|---|
+| DCC | `0x2066f2da1f91ba202af5251d39101c` | `0x8da73c53…ed94843e15` |
+| DAG | `0xfb6811fd6399df206d44f62800620d` | `0x420d8bda…319367fbf5d` |
+| DCO | `0xbe4efc6729eb3220423b7d6d6a0942` | `0x9f2cfef3…50d7747906` |
+
+**Protocol accounts** (`RegularAccountUpdatableCode`, private storage, Falcon-512 auth):
+
+| Basket | Account id |
+|---|---|
+| DCC | `0xaa20da7d98c2e29022510aa786948f` |
+| DAG | `0x53c54781b7b091905a948b5e3f92fe` |
+| DCO | `0xa3a0e023381d709060a19527e73f95` |
+
+**Pool funding (initial seed mints at manifest weights):**
+
+| Basket | dWBTC | dETH | dUSDT | dDAI |
+|---|---|---|---|---|
+| DCC | 40 000 | 40 000 | 20 000 | — |
+| DAG | 50 000 | 50 000 | — | — |
+| DCO | 10 000 | 10 000 | 40 000 | 40 000 |
+
+The nine mint-to-controller transactions are itemised in `darwin-baskets/state/testnet.toml::[[pool_funding]]`.
+
+**Test wallet**: `0x5230eb6eb7ba5c80335a738beaf8bc` (Darwin team operator).
+
+**Pragma oracle**: `0xd0e1384e21a6350029d80128eb5c44` (bech32 `mtst1argwzwzwyxnr2qpfmqqj366ugsax2t3x`). Not deployed by Darwin; observed via miden.pragma.build.
+
+## Appendix E — The Rust→Miden Account-Component Path
+
+The Darwin Protocol Account is currently shipped through the `cargo miden build` pipeline (the Wasm→MASM compilation path documented in `0xMiden/midenup`), not through the v0.23 `miden-assembly` toolchain that the bundled `darwin::*` math libraries use. This appendix records the path so future contributors land on the correct route quickly.
+
+**Crate layout** (`darwin-protocol/crates/darwin-controller-pkg`):
+
+- `Cargo.toml` declares `miden = "0.12"` as the only direct dependency, sets `crate-type = ["cdylib"]`, and embeds metadata under `[package.metadata.miden]` (`project-kind = "account"`, `supported-types = ["RegularAccountImmutableCode"]`).
+- `src/lib.rs` declares the `DarwinBasketController` struct and an `#[component]` impl that exposes the eight spec §5.3 procedures as Rust methods.
+- `rust-toolchain.toml` pins the nightly channel that `cargo-miden` needs.
+
+**Build**:
+
+```bash
+export PATH="$HOME/Library/Application Support/midenup/toolchains/0.14.0/bin:$PATH"
+cd darwin-protocol/crates/darwin-controller-pkg
+cargo miden build
+# -> target/miden/debug/darwin_controller_pkg.masp
+```
+
+**Deploy**:
+
+```bash
+miden client new-account \
+    --account-type regular-account-updatable-code \
+    --storage-mode private \
+    -p target/miden/debug/darwin_controller_pkg.masp
+```
+
+This emits a fresh `AccountId`, signs the account-creation note with a Falcon-512 key stored in the local keystore, and submits the proof to the testnet node. Repeat once per basket for DCC / DAG / DCO; record each `AccountId` in `darwin-baskets/state/testnet.toml::[protocol_accounts]`.
+
+**Known constraints**:
+
+- The `cargo miden build` Wasm→MASM lowering rejects `F32Const` opcodes. Procedure bodies must therefore avoid `Felt::ZERO` literals and any rust-stdlib path that produces an `f32` constant. Identity-pass and basic felt arithmetic (`+`, `-`, `*`) lower cleanly today.
+- The account is deployed as `RegularAccountUpdatableCode`. The spec prefers `RegularAccountImmutableCode`; switching it requires `supported-types` in the crate manifest to match, which a future commit lands when the procedure bodies are spec-final.
+- Real basket math (NAV computation, mint-amount formula with division, etc.) currently lives in the bundled v0.23 MASM libraries under `asm/lib/`. Wiring the Rust controller to those libraries requires either (a) the ecosystem-wide alignment between `miden-objects` and `miden-assembly` to v0.23 (see `src/component.rs`), or (b) re-implementing the math directly in the Rust component using only operations the `cargo-miden` pipeline supports.
 
 ---
 
