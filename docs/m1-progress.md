@@ -99,6 +99,10 @@ After those mints the user holds every constituent of every M1 basket (DCC, DAG,
 
 **Frontend rebalance module mirrors the SDK.** [`darwin-frontend/src/lib/rebalance.ts`](https://github.com/darwin-miden/darwin-frontend/blob/main/src/lib/rebalance.ts) ports the same planner to TypeScript so the M3 dashboard can render live drift without a Wasm round-trip. Type-checked via `npx tsc --noEmit`.
 
+**Two reviewer-facing binaries shipped.** [`darwin-sdk` `rebalance_demo`](https://github.com/darwin-miden/darwin-sdk/blob/main/rust/src/bin/rebalance_demo.rs) prints the rebalance plan for any of the three baskets given a synthetic snapshot (`--skew N` perturbs the first constituent so the planner emits real Buy/Sell trades). [`darwin-baskets` `testnet_inventory`](https://github.com/darwin-miden/darwin-baskets/blob/main/src/bin/testnet_inventory.rs) parses the bundled `state/testnet.toml` and prints a single-screen summary of every on-chain account, mint, and P2ID transfer.
+
+**Typed loader for testnet state.** [`darwin_baskets::state`](https://github.com/darwin-miden/darwin-baskets/blob/main/src/state.rs) parses `state/testnet.toml` into typed Rust structs, with 7 integration tests asserting cross-state invariants: every manifest alias has a deployed faucet, every protocol account targets a known basket, the user wallet holds every M1 constituent for the Flow A demo, and all transaction IDs are well-formed.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
