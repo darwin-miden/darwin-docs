@@ -71,6 +71,18 @@ Currently owned by the Darwin team's signing key; ownership transfers to the cor
 
 **`AccountComponent` compiles via the v0.19 path.** A self-contained `asm/controller_v0_19.masm` controller source compiles cleanly through `miden_objects::assembly::Assembler` (transitively `miden-assembly` 0.19) and yields an `AccountComponent` marked as `RegularAccountImmutableCode`-supporting. Procedure bodies are stubs (`push.0`) but the component is wire-compatible with `miden-client`'s `AccountBuilder` and demonstrates the deployment shape. The `deploy_m1` binary now exercises this for each of DCC / DAG / DCO and prints the green ticks.
 
+**🎯 Three Darwin Protocol Accounts deployed on public Miden testnet.** A new Rust→Miden crate (`darwin-protocol/crates/darwin-controller-pkg`) ships the `DarwinBasketController` as an `#[component]`-annotated Rust struct. `cargo miden build` lowers it through the Miden Wasm→MASM pipeline into a `.masp` package, and `miden client new-account` deploys one account per basket:
+
+| Basket | Protocol-account ID |
+|---|---|
+| DCC | `0xaa20da7d98c2e29022510aa786948f` |
+| DAG | `0x53c54781b7b091905a948b5e3f92fe` |
+| DCO | `0xa3a0e023381d709060a19527e73f95` |
+
+`RegularAccountUpdatableCode`, private storage, Falcon-512 auth, controlled by the Darwin team's local keystore. The eight controller procedures (spec §5.3) are exported with placeholder bodies — they let the account compile, deploy, and accept transactions, while the real basket logic in the v0.23 `darwin::*` math libraries is plugged in once the ecosystem version-skew unblocks.
+
+The Darwin Protocol Accounts join the seven faucets already on-chain. **10 Darwin accounts are now live on public Miden testnet** — four asset faucets, three basket-token faucets, three protocol controllers — recorded in [`darwin-baskets/state/testnet.toml`](https://github.com/darwin-miden/darwin-baskets/blob/main/state/testnet.toml).
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
