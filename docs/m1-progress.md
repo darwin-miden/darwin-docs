@@ -42,6 +42,8 @@ A short, week-by-week log of what has actually landed against the [M1 Architectu
 
 **Helpers spread across repos.** Basket lookup by symbol and faucet-alias deduplication (`darwin-baskets`); fresh-quote validation (`darwin-oracle-adapter`); hex round-trip for `EthAddress` (`darwin-bridge-adapter`); a `check-toolchain.sh` sanity script (`darwin-infra`); a static basket catalogue (`darwin-frontend`).
 
+**First on-chain artefact: `dETH` faucet deployed on public Miden testnet.** The first Darwin component to live on a public chain: a `FungibleFaucet` for `DETH` at account id `0xa095d9b3831e96206ff70c2218a6a9`, deployed via the `miden client new-account --account-type fungible-faucet` flow against `~/.miden/packages/basic-fungible-faucet.masp`. The deploying transaction (`0xd2645c81…c3909e7`) is client-side STARK-proven, submitted to the testnet node, and 1_000_000 base units were minted to the Darwin team test wallet (`0x5230eb6eb7ba5c8…`). Tracked authoritatively in `darwin-baskets/state/testnet.toml`. This is the proof-of-pipeline-end-to-end for M1 — every subsequent on-chain artefact (DAG / DCO faucets, protocol accounts, oracle adapter, bridge components) follows the same deployment path.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
