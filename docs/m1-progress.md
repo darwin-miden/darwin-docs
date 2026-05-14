@@ -103,6 +103,10 @@ After those mints the user holds every constituent of every M1 basket (DCC, DAG,
 
 **Typed loader for testnet state.** [`darwin_baskets::state`](https://github.com/darwin-miden/darwin-baskets/blob/main/src/state.rs) parses `state/testnet.toml` into typed Rust structs, with 7 integration tests asserting cross-state invariants: every manifest alias has a deployed faucet, every protocol account targets a known basket, the user wallet holds every M1 constituent for the Flow A demo, and all transaction IDs are well-formed.
 
+**TypeScript SDK now mirrors the Rust crate 1:1.** [`darwin-sdk/ts/`](https://github.com/darwin-miden/darwin-sdk/tree/main/ts) ports `BasketHandle`, `DepositRequest` + `validateDepositRequest`, `RedeemRequest` + `validateRedeemRequest`, and the off-chain `planRebalance` planner to TypeScript. Same validation rules, same algorithms, same error shapes as the Rust crate. Three vitest files cover the surface with 18 tests; `tsc` and `npm run build` succeed cleanly. The two SDKs now stay in lockstep ahead of the wasm-bindgen integration that will let the TS layer re-export the Rust crate directly.
+
+**Controller bodies upgraded from stubs to real felt arithmetic.** [`asm/controller_v0_19.masm`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-protocol-account/asm/controller_v0_19.masm) — the AccountComponent source compiled by the v0.19 path — now implements `compute_nav`, `apply_deposit`, `apply_redeem`, `compute_mint_amount`, `compute_redeem_amount`, and `accrue_management_fee` against the same input shape the Rust→Miden component uses. No u64 division (gated on the v0.23 ecosystem realignment); read_target_weight and update_oracle_adapter remain identity passthroughs until storage reads land.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
