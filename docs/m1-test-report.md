@@ -17,30 +17,44 @@ The report covers exactly the scope of M1 §2.2 / §11. M2 work (rebalancing, Ne
 
 | Item | Value |
 |---|---|
-| Miden testnet | (TBD: testnet id, commit, RPC endpoint at time of test) |
-| `miden-client` version | (TBD: should be 0.14.x) |
-| `miden-agglayer` commit (`next` branch) | (TBD: pin) |
-| Pragma oracle account id on Miden testnet | (TBD: snapshot value, dynamic resolution active) |
-| Darwin Protocol Account (Core Crypto / DCC) | (TBD) |
-| Darwin Protocol Account (Aggressive / DAG) | (TBD) |
-| Darwin Protocol Account (Conservative / DCO) | (TBD) |
-| `dETH` / `dWBTC` / `dUSDT` / `dDAI` faucet IDs | (TBD) |
-| DCC / DAG / DCO faucet IDs | (TBD) |
-| Oracle adapter account id | (TBD) |
-| AggLayer bridge live on public testnet during M1 window? | (TBD: yes/no — drives §10.5 decision matrix branch) |
-| Test runner machine | (TBD: e.g. "Apple M2 MacBook Pro, 16 GB RAM, macOS 26.0") |
+| Miden testnet | Block height ≥ 695354 at first deployment (2026-05-14) |
+| Miden node | Public testnet, default endpoint |
+| `miden-client` version | 0.14.8 |
+| `miden-vm` / `miden-assembly` / `miden-core-lib` | 0.23 (used in the Darwin libraries) |
+| `miden-objects` / `miden-tx` | 0.12 / 0.14 (used by the deployment binary; version skew to v0.23 line documented in `darwin-protocol/src/component.rs`) |
+| `miden-agglayer` commit (`next` branch) | v0.14-alpha (not yet bundled at test time) |
+| Pragma oracle account id on Miden testnet | `0xec7e450b91bf690015ad79573689f1` (snapshot — adapter resolves dynamically) |
+| `dETH` faucet | `0xa095d9b3831e96206ff70c2218a6a9` |
+| `dWBTC` faucet | `0x7a45cb24ada22120246bcf54196e12` |
+| `dUSDT` faucet | `0xd3789f451ddd4720602ba9eb1a268d` |
+| `dDAI` faucet | `0xb526deb0408a29207e4f27ed57bf1a` |
+| `DCC` basket-token faucet | `0x2066f2da1f91ba202af5251d39101c` |
+| `DAG` basket-token faucet | `0xfb6811fd6399df206d44f62800620d` |
+| `DCO` basket-token faucet | `0xbe4efc6729eb3220423b7d6d6a0942` |
+| Darwin Protocol Account (DCC / DAG / DCO) | Not yet deployed (blocked on version skew) |
+| Oracle adapter account id | Not yet deployed |
+| AggLayer bridge live on public testnet during M1 window? | Not confirmed at time of writing — Darwin team contact pending |
+| Test runner machine | Apple-M2 MacBook, macOS 26.3, Rust 1.95.0 |
 
 ## 2. Unit tests (MASM + Rust)
 
-### 2.1 `darwin-protocol` crates
+### 2.1 `darwin-protocol` crates — MASM math libraries
 
-| Procedure / module | Crate | Status | Coverage notes |
+All exercised via `miden-vm` 0.23 with the `miden-core-lib` u64-division event handler registered on the host. Run with `cargo test` in `darwin-protocol`.
+
+| Library | Procedures | Tests | Status |
 |---|---|---|---|
-| `DarwinBasketController::compute_nav` | `darwin-protocol-account` | TODO | |
-| `DarwinBasketController::apply_deposit` | `darwin-protocol-account` | TODO | |
-| `DarwinBasketController::apply_redeem` | `darwin-protocol-account` | TODO | |
-| `DarwinBasketController::compute_mint_amount` | `darwin-protocol-account` | TODO | incl. par-value branch |
-| `DarwinBasketController::compute_redeem_amount` | `darwin-protocol-account` | TODO | |
+| `darwin::math` | `felt_div` (u64-safe via `miden::core::math::u64::div`) | 3 | ✅ green |
+| `darwin::nav` | `weighted_sum_{2,3,4}`, `nav_per_share` | 6 | ✅ green |
+| `darwin::mint` | `par_value`, `standard` | 9 | ✅ green |
+| `darwin::fees` | `accrue_management`, `deduct_bps_fee` | 9 | ✅ green |
+| `darwin::redeem` | `redeem_value_usd`, `release_amount` | 9 | ✅ green |
+| `darwin::flow` | `mint_amount_for_{2,3,4}_asset_deposit`, `release_amount_for_constituent` | 7 | ✅ green |
+| `round_trip_masm` | deposit→redeem invariants across the libraries | 3 | ✅ green |
+| **MASM total** | | **46** | ✅ |
+| `DarwinBasketController::compute_nav` | `darwin-protocol-account` | TODO | Pending account-context test harness |
+| `DarwinBasketController::apply_deposit` | `darwin-protocol-account` | TODO | Pending account-context test harness |
+| `DarwinBasketController::apply_redeem` | `darwin-protocol-account` | TODO | Pending account-context test harness |
 | `DarwinBasketController::accrue_management_fee` | `darwin-protocol-account` | TODO | lazy accrual invariant |
 | `agglayer_faucet::asset_to_origin_asset` (DCC, DAG, DCO) | `darwin-basket-faucet` | TODO | scale + origin addr correctness |
 | `basket faucet::burn` (DCC, DAG, DCO) | `darwin-basket-faucet` | TODO | only-owner check |
@@ -56,13 +70,22 @@ The report covers exactly the scope of M1 §2.2 / §11. M2 work (rebalancing, Ne
 | `update_pragma_address` admin gate | TODO | |
 | Signed-attestation verification | TODO | |
 
-### 2.3 Bridge adapter (Rust)
+### 2.3 Bridge adapter (Rust + Solidity)
 
-Status: implemented and green on the `693a1ea` commit of `darwin-bridge-adapter`. 3 tests:
+Rust side: 5 tests, all green. `eth_address_round_trip`, `eth_address_hex_round_trip`, `eth_address_parse_rejects_malformed`, `b2agg_builder_requires_asset_and_destination`, `b2agg_builder_happy_path`.
 
-- `eth_address_round_trip` — `EthAddress::from_bytes` round-trips through `as_bytes`.
-- `b2agg_builder_requires_asset_and_destination` — builder returns `MissingAsset` when called without inputs.
-- `b2agg_builder_happy_path` — builder produces a populated `B2AggBuild` with the expected fields.
+Solidity side: 8 Foundry tests, all green. Run with `forge test`:
+
+| Test | Asserts |
+|---|---|
+| `test_initial_supply_is_zero` | newly deployed wrapper has zero total supply |
+| `test_owner_is_bridge` | constructor sets the AggLayer bridge as the Ownable owner |
+| `test_metadata_records_miden_origin` | `midenOriginToken`, `midenNetworkId`, `name`, `symbol` round-trip |
+| `test_only_bridge_can_mint` | non-owner `mint` reverts |
+| `test_bridge_can_mint_to_user` | happy path mint credits balance + supply |
+| `test_bridge_can_burn_from_user` | bridge can debit a balance and shrink supply |
+| `test_user_cannot_burn_their_own` | non-owner `burnFrom` reverts |
+| `test_mint_then_burn_round_trip_preserves_zero_supply` | net-zero invariant |
 
 ## 3. Integration tests (Rust against local Miden devnet)
 
@@ -86,14 +109,33 @@ Status: implemented and green on the `693a1ea` commit of `darwin-bridge-adapter`
 
 ## 4. End-to-end tests on Miden public testnet
 
-| Scenario | Status | Tx hashes | Proof time |
-|---|---|---|---|
-| Deploy 3 Darwin Protocol Accounts + faucets on public testnet | TODO | | |
-| Mint DCC via public testnet `DepositNote` consumption | TODO | | |
-| Redeem DCC via public testnet `RedeemNote` consumption | TODO | | |
-| Same on DAG | TODO | | |
-| Same on DCO | TODO | | |
-| Deposit just before / after expiry | TODO | | |
+Done so far:
+
+| Scenario | Status | Tx hash |
+|---|---|---|
+| Deploy `dETH` FungibleFaucet | ✅ | `0xd2645c81130aafea22c638ef35833b72c2960d8d05845b584ee9dc294c3909e7` |
+| Deploy `dWBTC` FungibleFaucet | ✅ | `0x33c2c0248d28f9caee2bcbc474146472a886c082b77986e3873ffa5019d72d99` |
+| Deploy `dUSDT` FungibleFaucet | ✅ | `0x32cd61c2500c257e60a8026541e65208024e6b4345af5f949a681954cae0f90a` |
+| Deploy `dDAI` FungibleFaucet | ✅ | `0x2d534d2aecc7bded638610b4456780e8bd43c6954b086e7aa0ed4ef0f7c8dfd0` |
+| Deploy `DCC` basket-token faucet | ✅ | `0x8da73c534cf5802b7a0b30815492d74daab4a14f1ec967b37911c7ed94843e15` |
+| Deploy `DAG` basket-token faucet | ✅ | `0x420d8bda3a81ca39d767fe858e8bb662d7ef8852d11fd7c5f0934319367fbf5d` |
+| Deploy `DCO` basket-token faucet | ✅ | `0x9f2cfef38b0a8a29732ce5caf190e578b707e294d611e6f3f8919f50d7747906` |
+| Receive faucet tokens from `faucet.testnet.miden.io` to the test wallet | ✅ | `0xaafc6cb005744e27b990888aafbe0b87c864a995f3bb8d555d541c3b1891458a` |
+| Consume the faucet note locally (STARK-prove client-side) | ✅ | `0xda8eeee31bd901d71b70dc33a7ddac09d92b308eb6d3ab5aa46de332fbfda949` |
+
+Pending:
+
+| Scenario | Status |
+|---|---|
+| Deploy 3 Darwin Protocol Accounts on public testnet | Pending — version skew with miden-objects 0.12 |
+| Deploy Pragma oracle adapter on public testnet | Pending |
+| Mint DCC via public testnet `DepositNote` consumption | Pending |
+| Redeem DCC via public testnet `RedeemNote` consumption | Pending |
+| Same on DAG | Pending |
+| Same on DCO | Pending |
+| Deposit just before / after expiry | Pending |
+
+> **Note on the sync bug.** Between the mint transactions above and writing this section, the public Miden testnet node started returning a protobuf wire-type decode error on `sync_transactions` (`AccountId.id: NoteMetadataHeader.sender: ...: invalid wire type: SixtyFourBit (expected LengthDelimited)`). The deploying transactions are visible in the explorer; the local client is unable to consume the mint notes until the node ships a fix. The deployments themselves are unaffected.
 
 ## 5. AggLayer bridge tests
 

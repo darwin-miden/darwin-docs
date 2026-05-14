@@ -38,7 +38,7 @@ A short, week-by-week log of what has actually landed against the [M1 Architectu
 
 **SDK request validation.** `darwin-sdk`'s `DepositRequest` now carries the user's recipient wallet, distinguishes resolved-vs-unresolved basket handles (cargo `with_protocol_account` / `with_basket_token_faucet` setters), and refuses placeholder or duplicate asset entries before constructing a note. Mirrored by `darwin-notes` which exposes the on-chain `DepositNoteInputs` / `RedeemNoteInputs` shapes.
 
-**CI everywhere.** Every Rust repo (`darwin-baskets`, `darwin-oracle-adapter`, `darwin-bridge-adapter`, `darwin-protocol`, `darwin-sdk`) has GitHub Actions running fmt + clippy + test on every push and PR. `darwin-infra` lints shell scripts and validates the docker-compose. `darwin-frontend` type-checks and lints. Dependabot is enabled across all repos.
+**Local-only checks.** All `cargo fmt`, `cargo clippy -D warnings`, `cargo test`, and `forge test` are part of the developer loop and run cleanly on every commit. The repos do not run GitHub Actions — checks happen on the developer's machine before push.
 
 **Helpers spread across repos.** Basket lookup by symbol and faucet-alias deduplication (`darwin-baskets`); fresh-quote validation (`darwin-oracle-adapter`); hex round-trip for `EthAddress` (`darwin-bridge-adapter`); a `check-toolchain.sh` sanity script (`darwin-infra`); a static basket catalogue (`darwin-frontend`).
 
