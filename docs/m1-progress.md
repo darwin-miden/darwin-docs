@@ -105,18 +105,42 @@ After those mints the user holds every constituent of every M1 basket (DCC, DAG,
 
 **TypeScript SDK now mirrors the Rust crate 1:1.** [`darwin-sdk/ts/`](https://github.com/darwin-miden/darwin-sdk/tree/main/ts) ports `BasketHandle`, `DepositRequest` + `validateDepositRequest`, `RedeemRequest` + `validateRedeemRequest`, and the off-chain `planRebalance` planner to TypeScript. Same validation rules, same algorithms, same error shapes as the Rust crate. Three vitest files cover the surface with 18 tests; `tsc` and `npm run build` succeed cleanly. The two SDKs now stay in lockstep ahead of the wasm-bindgen integration that will let the TS layer re-export the Rust crate directly.
 
-**Controller bodies upgraded from stubs to real felt arithmetic.** [`asm/controller_v0_19.masm`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-protocol-account/asm/controller_v0_19.masm) — the AccountComponent source compiled by the v0.19 path — now implements `compute_nav`, `apply_deposit`, `apply_redeem`, `compute_mint_amount`, `compute_redeem_amount`, and `accrue_management_fee` against the same input shape the Rust→Miden component uses. No u64 division (gated on the v0.23 ecosystem realignment); read_target_weight and update_oracle_adapter remain identity passthroughs until storage reads land.
+**Controller bodies upgraded from stubs to real felt arithmetic.** [`asm/controller_v0_19.masm`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-protocol-account/asm/controller_v0_19.masm) — the AccountComponent source compiled by the v0.19 path — now implements `compute_nav`, `apply_deposit`, `apply_redeem`, `compute_mint_amount`, `compute_redeem_amount`, and `accrue_management_fee` against the same input shape the Rust→Miden component uses.
+
+### Version-skew resolved — real-bodies controller deployed on testnet
+
+The earlier writeup framed the `miden-objects 0.12` vs `miden-assembly 0.23` split as a hard blocker. It was a misaligned dependency choice on our side: the production stack is `miden-client 0.14 → miden-protocol 0.14.5 → miden-assembly 0.22 + miden-core-lib 0.22`. After bumping the workspace from 0.23 → 0.22, the entire toolchain lines up and `AccountComponent` builds cleanly from a controller that calls `darwin::math::felt_div`.
+
+**On-chain proof:** a new Darwin Protocol Account is live on the public Miden testnet:
+
+- Account ID: `0x171f46fecf1bca8005ae068a8dfe77`
+- Deployment tx: `0xff0a85adf0f86ba3e80a245abe3a7a37426c8617632a0e4d08176768a1a9fb90`
+- Code commitment: `0x5d65429df8ae38f8b9dd01c062ffb3cebd7607391ab75d5ed66a73edb61db1d2`
+- MAST digest: `[4932857293237849552, 8031004551285969234, 8757150631344379491, 12194264630739062940]`
+
+The deployment recipe is fully reproducible:
+
+```
+cargo run -p darwin-protocol-account --bin build_real_bodies_package -- \
+    --out /tmp/darwin-real-bodies-controller.masp
+miden client new-account \
+    --account-type regular-account-immutable-code \
+    --packages /tmp/darwin-real-bodies-controller.masp \
+    --storage-mode private --deploy
+```
+
+The binary hand-assembles `darwin::math` + `darwin::controller` via miden-assembly 0.22 against miden-core-lib 0.22, packages them with the `AccountComponentMetadata` section the CLI consumes, and writes a `.masp`. Source: [`build_real_bodies_package.rs`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-protocol-account/src/bin/build_real_bodies_package.rs).
+
+**Atomic DepositNote shipped.** [`darwin-notes::ATOMIC_DEPOSIT_NOTE_MASM`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-notes/asm/atomic_deposit_note.masm) is a compute-only deposit note that computes `mint_amount = deposit_value * fee_factor / nav` via `darwin::math::felt_div` (real u64 division). It assembles into a `miden_protocol::note::NoteScript` — the type `miden-client::Client::new_transaction` consumes. Validated by `tests/atomic_deposit_note.rs` (2 tests; `100 * 9970 / 10000 = 99` executes correctly under miden-vm 0.22).
 
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
 
-- **`AccountComponent` integration.** Blocked on the ecosystem-wide version skew between `miden-objects` 0.12 (pinned to `miden-assembly` 0.19) and the Darwin libraries which are assembled with `miden-assembly` 0.23 to access `miden-core-lib`'s u64 division. `darwin-protocol/src/component.rs` documents this in detail. Unblocks when `miden-protocol` ships a release that bundles `miden-assembly` 0.23.
-- **Storage reads in MASM.** The `compute_nav` procedure needs to read pool positions from the protocol account's slot 2 StorageMap. Once `AccountComponent` is wireable, the `miden-tx` test harness gives us an account-execution context where storage reads can be exercised end-to-end.
-- **Cross-component calls to the oracle adapter.** Same dependency on the `miden-tx` harness.
-- **`DepositNote` and `RedeemNote` script bundles.** The MASM bodies are sketched in `darwin-protocol/crates/darwin-notes/asm/`; consumable `NoteScript.fromPackage(.masp)` requires the same account-context wiring as the storage reads.
-- **End-to-end Flow A on public testnet.** Requires the four items above plus a small amount of operator-side setup (deploy the four custom asset faucets, register them, mint test balances).
-- **AggLayer bridge integration on public testnet.** Requires the bridge-admin coordination flagged in the spec's §10 decision matrix.
+- **`Client::new_transaction` driver** that wraps `ATOMIC_DEPOSIT_NOTE_MASM` in a real Note, attaches the user's deposit assets, and submits via `miden-client` against the deployed controller. Plumbing only — no compile-time or ecosystem blocker remains.
+- **Kernel-aware DepositNote** that additionally calls `miden::note::move_assets` + the basket faucet's `mint_and_send` cross-component procedure. Same `Client::new_transaction` path; needs the basket-faucet's `agglayer_faucet` interface wired in.
+- **Storage reads in `compute_nav`** to source the live pool position from the controller's StorageMap rather than from the caller. Same v0.22 toolchain; pure MASM work.
+- **AggLayer bridge round-trip on public testnet.** Bridge-admin coordination flagged in the spec's §10 decision matrix; local docker stack works with corrected image tags.
 
 ## How to verify
 
