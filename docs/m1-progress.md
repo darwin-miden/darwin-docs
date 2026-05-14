@@ -11,7 +11,7 @@ A short, week-by-week log of what has actually landed against the [M1 Architectu
 
 ## Week 0 — 2026-05-14
 
-**Scaffolding shipped.** Nine repositories under [darwin-miden](https://github.com/darwin-miden) created with MIT licence, CI workflows, and READMEs (`darwin-protocol`, `darwin-sdk`, `darwin-baskets`, `darwin-oracle-adapter`, `darwin-bridge-adapter`, `darwin-infra`, `darwin-docs`, `darwin-frontend`, `.github`).
+**Scaffolding shipped.** Nine repositories under [darwin-miden](https://github.com/darwin-miden) created with MIT licence and READMEs (`darwin-protocol`, `darwin-sdk`, `darwin-baskets`, `darwin-oracle-adapter`, `darwin-bridge-adapter`, `darwin-infra`, `darwin-docs`, `darwin-frontend`, `.github`). No GitHub Actions / CI runs on the org by design — checks happen on the developer's machine before push.
 
 **Specs delivered.** Full M1 architecture spec, test report skeleton, and getting-started guide live on this repo.
 
@@ -83,6 +83,15 @@ Currently owned by the Darwin team's signing key; ownership transfers to the cor
 
 The Darwin Protocol Accounts join the seven faucets already on-chain. **10 Darwin accounts are now live on public Miden testnet** — four asset faucets, three basket-token faucets, three protocol controllers — recorded in [`darwin-baskets/state/testnet.toml`](https://github.com/darwin-miden/darwin-baskets/blob/main/state/testnet.toml).
 
+**Flow A user side bootstrapped.** A second wallet — a public-storage `RegularAccount` at `0xed3cd5befa3207805f8529207cfc0d` — simulates an end-user inside Flow A. To put real basket-constituent assets into its vault, two on-chain steps ran:
+
+1. The Darwin team's wallet P2ID-transferred `1_000_000` base units of the public Miden faucet token to the user (`tx 0xfe0a531e…116bea`).
+2. The Darwin `dETH` faucet minted `5_000` base units directly into the user wallet (`tx 0xdf09fbe2…2fec095`, output note `0xa35ab164…14d9ff3`).
+
+After that mint the user holds enough dETH to drive the wallet → controller deposit path once the protocol-account bodies wire in.
+
+**Reproducible deploy recipe shipped.** [`darwin-infra/scripts/deploy-testnet.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/deploy-testnet.sh) prints — or, with `--execute`, replays — the exact `miden new-wallet` / `new-faucet` / `mint` / `send` sequence that materialised every account in `darwin-baskets/state/testnet.toml`. A grant reviewer can re-run it against the same testnet RPC with their own signing key and get the same 10-account topology.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
@@ -103,4 +112,4 @@ cargo test                # 57 tests, all green
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-The first build is slow (the Miden toolchain is large); subsequent builds use `Swatinem/rust-cache` in CI.
+The first build is slow because the Miden toolchain is large; subsequent builds reuse the local `target/` cache.
