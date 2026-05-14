@@ -4,6 +4,7 @@ Darwin is a **confidential basket protocol on Miden**. Users deposit underlying 
 
 ## Contents
 
+- [Getting Started — Darwin on Miden Testnet](docs/getting-started.md) — install the toolchain, create a Miden wallet, request testnet tokens from the faucet, bring up the local AggLayer stack, build and test every Darwin crate.
 - [Milestone 1 Architecture Specification](docs/m1-architecture-spec.md) — the technical contract for the Miden core layer delivered under M1 of the Darwin x Miden grant: Private Execution Account model, three curated baskets (Core Crypto, Aggressive, Conservative), Pragma Oracle integration, AggLayer bridge integration via `miden-agglayer` v0.14-alpha, Flow A end-to-end on testnet.
 
 ## Project layout
