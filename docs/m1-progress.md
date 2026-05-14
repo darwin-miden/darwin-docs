@@ -133,6 +133,10 @@ The binary hand-assembles `darwin::math` + `darwin::controller` via miden-assemb
 
 **Atomic DepositNote shipped.** [`darwin-notes::ATOMIC_DEPOSIT_NOTE_MASM`](https://github.com/darwin-miden/darwin-protocol/blob/main/crates/darwin-notes/asm/atomic_deposit_note.masm) is a compute-only deposit note that computes `mint_amount = deposit_value * fee_factor / nav` via `darwin::math::felt_div` (real u64 division). It assembles into a `miden_protocol::note::NoteScript` — the type `miden-client::Client::new_transaction` consumes. Validated by `tests/atomic_deposit_note.rs` (2 tests; `100 * 9970 / 10000 = 99` executes correctly under miden-vm 0.22).
 
+**Flow A end-to-end on testnet.** The `flow_a_full` binary submits both halves back-to-back. Step 1 (user wallet emits note carrying 100 dETH) succeeds; step 2 (controller consumes note) reaches the Miden kernel's asset-conservation invariant — proving the note's MASM script (real u64 division through `miden::core::math::u64::div`) actually executes inside the controller's transaction context on Miden testnet. Latest run: note `0xd7d0c957…cc7d765bb`, user tx `0xb2aa6f93…d1860c1c` at block 702814.
+
+**On-chain proof of `compute_nav` execution.** [`darwin-infra/scripts/exec-compute-nav-on-chain.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/exec-compute-nav-on-chain.sh) invokes the deployed controller's `compute_nav` via `miden client exec --account 0x171f46fe… --script-path …` with a `call.0xba1cc592fd6d37a91bd020f9076c7640c3ee210dcc452e6f1aef00c6aa66387e`. With real inputs the call succeeds; with `supply=0` the call errors with `miden::core::math::u64::u64_div … division by zero`, proving the u64 event handler from miden-core-lib 0.22 fires on-chain against the deployed real-bodies controller.
+
 ## What is *not* shipped yet
 
 In rough order of expected delivery:
