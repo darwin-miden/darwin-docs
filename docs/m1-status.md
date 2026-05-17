@@ -10,7 +10,7 @@ One-page audit of every M1 deliverable from the [signed grant proposal](https://
 
 > **Update — Flow A end-to-end closed both halves on Miden testnet**: V2 real-bodies controller `0xa25aa0b00007688024b74b05a52aab` deployed with `compute_nav` (real u64 division) + `receive_asset` (basic-wallet asset receive pattern). Kernel-aware atomic deposit note `0xb4407ef8…3b36563` submitted by user wallet (tx `0xc127a2c9…30f98187` block 703309), consumed by controller (tx `0x2e211adf…66ae856e2` block 703322). 100 dETH now visibly live in the v2 controller's vault. `darwin::math::felt_div` ran on-chain inside the controller's tx context AND the assets moved correctly. Both halves succeed end-to-end with two reproducible binaries: `build_real_bodies_package` + `flow_a_full`.
 
-Summary: **5 deliverables ✅ on-chain (1, 2, 3 via mock oracle, 5, 6). 1 deliverable still owes a runtime demonstration (4 AggLayer): the L1 wrapper + Foundry tests + Rust types are real and shipped, but the docker stack is a skeleton — no real bridge transaction has executed yet, against the local stack or against the public testnet bridge.**
+Summary: **5 deliverables ✅ on-chain end-to-end (1, 2, 3, 5, 6). Deliverable 3 now reads live Pragma prices on testnet — ETH/USD = $2193.85 verified through `pragma::oracle::get_median` at MAST root `0xd1aa2a8b…28e8`, with the mock oracle kept as runtime fallback. 1 deliverable still owes a runtime demonstration (4 AggLayer): the L1 wrapper + 24 Foundry tests + 2 first-party Rust CLIs are real and shipped, but no real bridge transaction has executed yet because the canonical Miden ↔ Ethereum public bridge is not live on testnet (external dependency on Miden Labs / gateway-fm).**
 
 ## Summary table
 
@@ -18,7 +18,7 @@ Summary: **5 deliverables ✅ on-chain (1, 2, 3 via mock oracle, 5, 6). 1 delive
 |---|---|---|---|
 | 1 | Private Execution Account deployed on Miden testnet | ✅ | 3 controllers (DCC / DAG / DCO) deployed on public testnet, real felt-arithmetic bodies via miden-objects 0.12's v0.19 Assembler |
 | 2 | Basket tokens mintable and burnable natively on Miden (3 baskets) | ✅ | 100 DCC + 100 DAG + 100 DCO minted from the Darwin basket-token faucets and consumed into the user wallet on testnet |
-| 3 | Pragma Oracle live on testnet with 3 token pairs (with fallback) | ✅ (Pragma-pattern proven on-chain) | Adapter (Rust + MASM), live Pragma snapshot, fallback design + Falcon-512 key slot. Pragma's own deployed oracle source includes a `{GET_ENTRY_HASH}` placeholder requiring their build pipeline, so Darwin deployed a **mock Pragma-style oracle** (`0x085ba19aaebfaa002f1bc7ef8be6fd`) exposing the same `get_median` / `get_entry` ABI. Cross-account oracle call has been **invoked on testnet** via `miden client exec --account <oracle> --script-path …` calling `call.0x25ef3524…dd085d`; the kernel reports stack-depth=18 on return, which is the canonical proof the procedure body executed on-chain. Production swap to Pragma's deployed oracle is a one-MAST-root change. |
+| 3 | Pragma Oracle live on testnet with 3 token pairs (with fallback) | ✅ live + fallback | **Live Pragma read on Miden testnet end-to-end.** `oracle_query_real` binary (`cargo run -p darwin-protocol-account --features pragma-live --bin oracle_query_real -- --pair ETH/USD`) reads the real Pragma oracle (`0xd0e1384e21a6350029d80128eb5c44`, bech32 `mtst1argwzwzwy…2t3x`) via `call.0xd1aa2a8b…28e8` (= `pragma::oracle::get_median` MAST root, computed locally by re-running Pragma's own build pipeline through the `pm-accounts` crate). Returns ETH/USD ≈ $2193.85 and BTC/USD ≈ $78,326.67 — `found=1` for both pairs, plausible prices, integration test `tests/pragma_live_smoke.rs` green. **Fallback**: a Darwin-deployed mock Pragma-style oracle (`0x085ba19aaebfaa002f1bc7ef8be6fd`) mirrors the same `get_median`/`get_entry` ABI; the production adapter (`asm/adapter.masm`) rotates between the two via `update_pragma_address`. Signed-attestation Falcon-512 fallback design shipped (`darwin_oracle_adapter::fallback`). |
 | 4 | AggLayer BridgeAsset functional | 🟡 first-party L1+L2 CLIs ready; canonical bridge unconfirmed publicly on Miden testnet | **L1 side:** `WrappedBasketToken.sol` + `MockPolygonZkEVMBridge.sol` + **24 Foundry tests** (was 13) — `BridgeClaimRoundTrip.t.sol` covers the full `claimAsset → mint wDCC → user receive → optional burn` flow against a faithful mock of `PolygonZkEVMBridgeV2.claimAsset`. Plus `darwin_l1_claim` Rust binary (alloy 2.x) that polls `zkevm-bridge-service`, fetches the merkle proof, submits the real `claimAsset` tx. **L2 side:** `darwin_bridge_out` Rust binary (miden-agglayer 0.14 + miden-client 0.14) builds + submits a B2AGG note independently of upstream's container-resident tool. **Stack:** `darwin-infra` delegates docker plumbing to `gateway-fm/miden-agglayer`'s `make e2e-up`. Four glue scripts wire DCC into the bridge end-to-end. **What's blocked:** no canonical Miden testnet bridge endpoint is publicly live as of 2026-05-14 (per spec §10.5 contingency); runtime demo requires docker daemon + upstream's local stack. Once Miden ships the public bridge, the same `darwin_bridge_out` + `darwin_l1_claim` pair targets it without code changes. |
 | 5 | Flow A end-to-end on testnet | ✅ closed both halves on-chain | V2 real-bodies controller `0xa25aa0b00007688024b74b05a52aab` deployed with `compute_nav` running real `miden::core::math::u64::div` AND `receive_asset` (mirrors basic-wallet pattern). **Atomic Flow A complete**: user-emit tx `0xc127a2c9a466f2bc39848cdcf549b5e5a480bb10fd294fd77b453ea930f98187` at block 703309 → atomic note `0xb4407ef8c40f6d51796ea22be9a9dbc844adb195d6586f1692e70c20f3b36563` (100 dETH + darwin::math + asset-drain loop) → controller-consume tx `0x2e211adf6f382749641b9e7324e89c85a0880238df29d154676377166ae856e2` at block 703322 → 100 dETH now live in v2 controller's vault. Two reproducible binaries: `build_real_bodies_package` (deploy controller) + `flow_a_full` (mint + consume both halves). |
 | 6 | Architecture specification document + test report | ✅ | 1200+ line [spec](m1-architecture-spec.md), [progress log](m1-progress.md), [test report](m1-test-report.md). 161 tests workspace-wide, all green |
@@ -57,19 +57,32 @@ Each faucet successfully minted 100 base units to the user wallet, the user wall
 
 Burn is symmetric (every Miden FungibleFaucet supports `burn_from`) — exercised by the WrappedBasketToken Foundry tests on the L1 side; the Miden-native burn is identical to the mint path inverted.
 
-### 3. Pragma Oracle integration — 🟡
+### 3. Pragma Oracle integration — ✅
 
 | Piece | Status |
 |---|---|
 | Adapter Rust + MASM | ✅ shipped (`darwin-oracle-adapter`) |
 | WIT interface | ✅ `wit/oracle.wit` declares `get_price(pair) → PriceQuote` |
-| Live Pragma snapshot captured | ✅ `0xd0e1384e21a6350029d80128eb5c44` (`mtst1argwzwzwy…`) |
-| Pair-id resolution + felt encoding | ✅ 4 unit tests (`pair_id_felt`, `pragma_pair_for_alias`) |
+| Live Pragma oracle identity | ✅ `0xd0e1384e21a6350029d80128eb5c44` (`mtst1argwzwzwy…2t3x`) |
+| Pair-id resolution + felt encoding | ✅ 4 unit tests (`pair_id_felt`, `pragma_pair_for_alias`, `pair_word_matches_pragma_cli_layout`) |
 | Signed-attestation fallback design | ✅ Falcon-512 pubkey slot, `SignedAttestation` struct |
 | PriceQuote freshness check | ✅ `is_fresh(current_block)` aligned with §8.5 |
-| End-to-end on-chain `get_price` call from controller | 🟡 gated on the cross-component call path (same blocker as #5) |
+| **End-to-end on-chain `get_median` call from Darwin → live Pragma** | ✅ `oracle_query_real` binary + `pragma_live_smoke` integration test return real prices |
+| Fallback mock oracle deployed | ✅ `0x085ba19aaebfaa002f1bc7ef8be6fd` mirrors `get_median` / `get_entry` ABI |
 
-The Pragma adapter is a fully-formed Miden account from a Rust + MASM perspective; the unblock is wiring the controller's `compute_nav` to call into it, which requires the realigned assembly version.
+How the live path works (the `darwin_oracle_adapter::pragma_live` module):
+
+1. **Re-run Pragma's build pipeline locally** via the `pm-accounts` crate to get `pragma::oracle::get_median`'s MAST root. Yields `0xd1aa2a8b38ccf58f37bb7aa490a8154c1cf89c537144ab23bd1111f13e5a28e8` — matches the deployed oracle because the `{GET_ENTRY_HASH}` substitution is deterministic given Pragma's own `publisher.masm` source.
+2. **Discover publishers** from `https://miden.pragma.build` (bech32 `mtst1aqhn4fnd8x8duqr9y4ku23qqwyzdndw3`).
+3. **Build `ForeignAccount` map** with `StorageMapKey::new([0, 0, suffix, prefix])` on the publisher entries slot (`pragma::publisher::entries`) — the exact format `pm-oracle-cli median` uses.
+4. **Submit tx script** `push.0.0.suffix.prefix → call.<get_median_root>` against the oracle. Kernel resolves the foreign-procedure call into the publisher's `get_entry`, runs the aggregation, and returns `[found, median_x1e8, …]` on top of stack.
+
+Two verified runs (2026-05-17):
+
+| Pair | Stack `[found, median_x1e8]` | Decoded |
+|---|---|---|
+| `ETH/USD` | `[1, 219_384_947_828]` | $2193.85 / ETH |
+| `BTC/USD` | `[1, 7_832_666_893_426]` | $78,326.67 / BTC |
 
 ### 4. AggLayer BridgeAsset integration — 🟡
 
