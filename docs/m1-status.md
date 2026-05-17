@@ -1,12 +1,12 @@
 ---
 title: Milestone 1 — Status against the Grant Proposal
 status: living document — updated as deliverables land
-last_updated: 2026-05-14
+last_updated: 2026-05-17
 ---
 
 # Darwin Protocol — M1 Status
 
-One-page audit of every M1 deliverable from the [signed grant proposal](https://github.com/darwin-miden/darwin-docs/blob/main/Grant_Proposal_Darwin_x_Miden.md) against what is actually shipped today.
+One-page audit of every M1 deliverable from the [signed grant proposal](Grant_Proposal_Darwin_x_Miden.md) against what is actually shipped today.
 
 > **Update — Flow A end-to-end closed both halves on Miden testnet**: V2 real-bodies controller `0xa25aa0b00007688024b74b05a52aab` deployed with `compute_nav` (real u64 division) + `receive_asset` (basic-wallet asset receive pattern). Kernel-aware atomic deposit note `0xb4407ef8…3b36563` submitted by user wallet (tx `0xc127a2c9…30f98187` block 703309), consumed by controller (tx `0x2e211adf…66ae856e2` block 703322). 100 dETH now visibly live in the v2 controller's vault. `darwin::math::felt_div` ran on-chain inside the controller's tx context AND the assets moved correctly. Both halves succeed end-to-end with two reproducible binaries: `build_real_bodies_package` + `flow_a_full`.
 
@@ -16,12 +16,12 @@ Summary: **5 deliverables ✅ on-chain end-to-end (1, 2, 3, 5, 6). Deliverable 3
 
 | # | Deliverable (grant verbatim) | Status | Evidence |
 |---|---|---|---|
-| 1 | Private Execution Account deployed on Miden testnet | ✅ | 3 controllers (DCC / DAG / DCO) deployed on public testnet, real felt-arithmetic bodies via miden-objects 0.12's v0.19 Assembler |
+| 1 | Private Execution Account deployed on Miden testnet | ✅ | 6 controllers live: 3 v1 stubs (DCC/DAG/DCO), `real_bodies_path`, `real_bodies_v2` (with `receive_asset`), `real_bodies_v3` (storage-aware `read_pool_position`). All `RegularAccountImmutableCode`, private storage, Falcon-512 auth. `darwin_doctor` binary pings 18/18 testnet accounts on every run. |
 | 2 | Basket tokens mintable and burnable natively on Miden (3 baskets) | ✅ | 100 DCC + 100 DAG + 100 DCO minted from the Darwin basket-token faucets and consumed into the user wallet on testnet |
 | 3 | Pragma Oracle live on testnet with 3 token pairs (with fallback) | ✅ live + fallback | **Live Pragma read on Miden testnet end-to-end.** `oracle_query_real` binary (`cargo run -p darwin-protocol-account --features pragma-live --bin oracle_query_real -- --pair ETH/USD`) reads the real Pragma oracle (`0xd0e1384e21a6350029d80128eb5c44`, bech32 `mtst1argwzwzwy…2t3x`) via `call.0xd1aa2a8b…28e8` (= `pragma::oracle::get_median` MAST root, computed locally by re-running Pragma's own build pipeline through the `pm-accounts` crate). Returns ETH/USD ≈ $2193.85 and BTC/USD ≈ $78,326.67 — `found=1` for both pairs, plausible prices, integration test `tests/pragma_live_smoke.rs` green. **Fallback**: a Darwin-deployed mock Pragma-style oracle (`0x085ba19aaebfaa002f1bc7ef8be6fd`) mirrors the same `get_median`/`get_entry` ABI; the production adapter (`asm/adapter.masm`) rotates between the two via `update_pragma_address`. Signed-attestation Falcon-512 fallback design shipped (`darwin_oracle_adapter::fallback`). |
-| 4 | AggLayer BridgeAsset functional | 🟡 first-party L1+L2 CLIs ready; canonical bridge unconfirmed publicly on Miden testnet | **L1 side:** `WrappedBasketToken.sol` + `MockPolygonZkEVMBridge.sol` + **24 Foundry tests** (was 13) — `BridgeClaimRoundTrip.t.sol` covers the full `claimAsset → mint wDCC → user receive → optional burn` flow against a faithful mock of `PolygonZkEVMBridgeV2.claimAsset`. Plus `darwin_l1_claim` Rust binary (alloy 2.x) that polls `zkevm-bridge-service`, fetches the merkle proof, submits the real `claimAsset` tx. **L2 side:** `darwin_bridge_out` Rust binary (miden-agglayer 0.14 + miden-client 0.14) builds + submits a B2AGG note independently of upstream's container-resident tool. **Stack:** `darwin-infra` delegates docker plumbing to `gateway-fm/miden-agglayer`'s `make e2e-up`. Four glue scripts wire DCC into the bridge end-to-end. **What's blocked:** no canonical Miden testnet bridge endpoint is publicly live as of 2026-05-14 (per spec §10.5 contingency); runtime demo requires docker daemon + upstream's local stack. Once Miden ships the public bridge, the same `darwin_bridge_out` + `darwin_l1_claim` pair targets it without code changes. |
-| 5 | Flow A end-to-end on testnet | ✅ closed both halves on-chain | V2 real-bodies controller `0xa25aa0b00007688024b74b05a52aab` deployed with `compute_nav` running real `miden::core::math::u64::div` AND `receive_asset` (mirrors basic-wallet pattern). **Atomic Flow A complete**: user-emit tx `0xc127a2c9a466f2bc39848cdcf549b5e5a480bb10fd294fd77b453ea930f98187` at block 703309 → atomic note `0xb4407ef8c40f6d51796ea22be9a9dbc844adb195d6586f1692e70c20f3b36563` (100 dETH + darwin::math + asset-drain loop) → controller-consume tx `0x2e211adf6f382749641b9e7324e89c85a0880238df29d154676377166ae856e2` at block 703322 → 100 dETH now live in v2 controller's vault. Two reproducible binaries: `build_real_bodies_package` (deploy controller) + `flow_a_full` (mint + consume both halves). |
-| 6 | Architecture specification document + test report | ✅ | 1200+ line [spec](m1-architecture-spec.md), [progress log](m1-progress.md), [test report](m1-test-report.md). 161 tests workspace-wide, all green |
+| 4 | AggLayer BridgeAsset functional | 🔴 blocked on external (Miden Labs / gateway-fm) | **L1 side:** `WrappedBasketToken.sol` + `MockPolygonZkEVMBridge.sol` + **24 Foundry tests** — `BridgeClaimRoundTrip.t.sol` covers the full `claimAsset → mint wDCC → user receive → optional burn` flow against a faithful mock of `PolygonZkEVMBridgeV2.claimAsset`. Plus `darwin_l1_claim` Rust binary (alloy 2.x) that polls `zkevm-bridge-service`, fetches the merkle proof, submits the real `claimAsset` tx. **L2 side:** `darwin_bridge_out` Rust binary (miden-agglayer 0.14 + miden-client 0.14) builds + submits a B2AGG note independently of upstream's container-resident tool. **External blocker**: the canonical Miden ↔ Ethereum public bridge endpoint is not live on testnet as of 2026-05-17. Coordination email sent to Miden team. The day the public bridge ships, the same `darwin_bridge_out` + `darwin_l1_claim` pair targets it without code changes. |
+| 5 | Flow A end-to-end on testnet | ✅ closed both halves on-chain | V2 real-bodies controller `0xa25aa0b00007688024b74b05a52aab` deployed with `compute_nav` running real `miden::core::math::u64::div` AND `receive_asset` (mirrors basic-wallet pattern). **Atomic Flow A complete**: user-emit tx `0xc127a2c9…30f98187` at block 703309 → atomic note `0xb4407ef8…3b36563` (100 dETH + darwin::math + asset-drain loop) → controller-consume tx `0x2e211adf…66ae856e2` at block 703322 → 100 dETH live in v2 controller's vault. **Bonus (M2 scope, already delivered)**: Flow C atomic redeem note `0xb9797a4b…655cb0` consumed at tx `0x005c4eec…7800` block 777149 → 50 DCC drained on-chain. |
+| 6 | Architecture specification document + test report | ✅ | 1400+ line [spec](m1-architecture-spec.md), [progress log](m1-progress.md), [test report](m1-test-report.md). 198 tests workspace-wide, all green (90 protocol + 18 sdk-rust + 18 sdk-ts + 26 baskets + 17 oracle-adapter + 5 bridge-rust + 24 bridge-foundry). |
 
 ## Detail per deliverable
 
@@ -84,72 +84,62 @@ Two verified runs (2026-05-17):
 | `ETH/USD` | `[1, 219_384_947_828]` | $2193.85 / ETH |
 | `BTC/USD` | `[1, 7_832_666_893_426]` | $78,326.67 / BTC |
 
-### 4. AggLayer BridgeAsset integration — 🟡
+### 4. AggLayer BridgeAsset integration — 🔴 blocked on external
 
-L1 wrapper `WrappedBasketToken.sol` (`darwin-bridge-adapter/contracts/`):
+`darwin-bridge-adapter` ships everything Darwin controls:
 
-- ERC20 + Ownable, bridge owns mint/burn, end-users can transfer.
-- 13 Foundry tests — initial supply zero, only-owner mint, only-owner burn, mint→burn round-trip preserves zero supply, multi-recipient supply tracking, burn-overflow reverts, ownership rotation, mint-zero idempotency.
-- `forge test`: 13 passed, 0 failed.
+- **L1 contract** `WrappedBasketToken.sol` — ERC20 + Ownable, bridge owns mint/burn, end-users can transfer.
+- **24 Foundry tests** — `WrappedBasketToken.t.sol` (13 unit tests) + `BridgeClaimRoundTrip.t.sol` (11 integration tests against `MockPolygonZkEVMBridge.sol`, a faithful mock of `PolygonZkEVMBridgeV2.claimAsset`). All green.
+- **L1 CLI** `darwin_l1_claim` (alloy 2.x) — polls the zkevm-bridge-service for the merkle proof, submits the real `claimAsset` tx.
+- **L2 CLI** `darwin_bridge_out` (miden-agglayer 0.14 + miden-client 0.14) — builds + submits a B2AGG note from a Darwin basket account.
 
-Miden-side B2AGG / CLAIM helpers ship in `darwin-bridge-adapter::{b2agg, claim}` (Rust types + builder pattern). The end-to-end bridge transaction is gated on bridge-admin coordination on public testnet (the canonical Miden testnet bridge is intermittently live during the M1 window; the `gateway-fm/miden-agglayer` docker stack is the documented fallback per §10.5 of the spec).
+**External blocker.** The canonical Miden ↔ Ethereum bridge owned by Miden Labs / gateway-fm is not publicly live on testnet as of 2026-05-17. The day it ships, `darwin_bridge_out --bridge-account <id>` + `darwin_l1_claim --bridge-address 0x…` reuse the same code paths against the real bridge with no Darwin-side changes. Coordination email sent to the Miden team.
 
-### 5. Flow A end-to-end on testnet — 🟡 (decomposed)
+### 5. Flow A end-to-end on testnet — ✅
 
-Flow A as specified is: user deposits constituents → controller validates + consumes → controller mints basket token → user receives basket-token note, all in a single atomic `DepositNote` consumption.
+Atomic single-note Flow A runs end-to-end inside the controller's tx context:
 
-What works on testnet today, decomposed:
+| Step | Tx | Block | Detail |
+|---|---|---|---|
+| User wallet emits atomic deposit note | `0xc127a2c9…30f98187` | 703309 | 100 dETH leaves user wallet → atomic note `0xb4407ef8…3b36563` carrying the asset + `darwin::math::felt_div` |
+| v2 controller consumes the note | `0x2e211adf…66ae856e2` | 703322 | Note script runs `miden::core::math::u64::div` on-chain via miden-core-lib 0.22, then drains 100 dETH into the controller's vault via `call.receive_asset` |
 
-| Half | Status | Evidence |
-|---|---|---|
-| Mint half (controller → user) | ✅ | DCC/DAG/DCO faucets minted to user wallet, notes consumed |
-| Deposit half (user → controller) | ✅ | User wallet sent constituents to each controller via P2ID: DCC ← 100 dETH (`tx 0xd5803e81…`), DAG ← 100 dETH (`tx 0x30433f21…`), DCO ← 200 dDAI (`tx 0xfaf0c587…`) |
-| Atomic single-note Flow A | 🟡 in flight | Path proven by `tests/v019_stdlib_path.rs`. Migration plan below. |
+**Bonus** — Flow C (M2 scope per the grant) already runs end-to-end too:
 
-**Resolution of the "version skew":** the right primitive was always `miden-stdlib 0.19`'s `std::math::u64::div` (event handler `U64_DIV_EVENT_NAME` declared at miden-stdlib-0.19.1/src/lib.rs:79). Darwin originally pulled in `miden-core-lib 0.23` because the 0.23 `Assembler::default()` ships without stdlib attached — but miden-objects 0.12's bundled v0.19 `Assembler` accepts the 0.19 stdlib as a static library and resolves `std::math::u64::div` cleanly. The proof: `AccountComponent::compile` succeeds on a controller source that calls into a Darwin math library that itself calls `std::math::u64::div`. No version bump needed.
+| Step | Tx | Block | Detail |
+|---|---|---|---|
+| User wallet emits atomic redeem note | `0xd670066e…3908f` | 777137 | 50 DCC leaves user wallet → atomic redeem note `0xb9797a4b…655cb0` |
+| v2 controller consumes the redeem note | `0x005c4eec…7800` | 777149 | `darwin::math::felt_div` runs inside the controller tx context, 50 DCC drains into the controller's vault |
 
-**Migration plan** (≈1–2 days, no Miden coordination):
-
-1. Rewrite `asm/lib/math.masm` to `use std::math::u64` instead of `use miden::core::math::u64`.
-2. Switch `build.rs` from `miden-assembly 0.23 + miden-core-lib` to `miden-objects 0.12`'s bundled `Assembler` with `StdLibrary::default()` attached. Drop the `miden-core-lib` dep.
-3. Run the existing math test suite under the unified 0.19 path. All `darwin::math::felt_div` tests will pass identically because the two `u64::div` implementations are functionally equivalent.
-4. Update `controller.masm` to call `darwin::math::felt_div` directly inside `compute_nav`, `compute_mint_amount`, etc., and re-deploy the three protocol accounts.
-5. Author the DepositNote / RedeemNote scripts that combine deposit + mint in one note, also on the 0.19 path.
-
-Item #1 plus #2 unlock the integration; the rest is straightforward.
+Two reproducible binaries: `flow_a_full` and `flow_c_full`.
 
 ### 6. Architecture specification + test report — ✅
 
-- [`m1-architecture-spec.md`](m1-architecture-spec.md) — 1200+ lines, 13 sections + 5 appendices (testnet deployments, Rust component path, basket constituents, version notes, glossary).
+- [`m1-architecture-spec.md`](m1-architecture-spec.md) — 1400+ lines, 13 sections + 5 appendices (testnet deployments, Rust component path, basket constituents, version notes, glossary).
 - [`m1-progress.md`](m1-progress.md) — living progress log, updated as every commit lands.
 - [`m1-test-report.md`](m1-test-report.md) — testnet transaction table, integration test plan, performance metrics, privacy validation checks.
-- Workspace test totals (all green):
-  - darwin-protocol: 83 (MASM via miden-vm 0.23 + Rust integration)
-  - darwin-sdk Rust: 18
-  - darwin-sdk TypeScript: 18 (vitest)
-  - darwin-baskets: 21 (was 18; +3 new for user-deposit invariants)
-  - darwin-oracle-adapter: 11
-  - darwin-bridge-adapter: 13 (Foundry)
+- Workspace test totals (all green, verified 2026-05-17):
+  - darwin-protocol: **90**
+  - darwin-sdk Rust: **18**
+  - darwin-sdk TypeScript: **18** (vitest)
+  - darwin-baskets: **26**
+  - darwin-oracle-adapter: **17** (incl. live-Pragma round-trip)
+  - darwin-bridge-adapter Rust: **5** (lib)
+  - darwin-bridge-adapter Foundry: **24**
   - darwin-frontend: tsc clean
-  - **Total: 164 tests**
+  - **Total: 198 tests**
 
-## How the "ecosystem blocker" was resolved
+## Version pin
 
-The earlier writeup claimed `miden-objects 0.12` (assembly 0.19) couldn't be combined with `darwin::math` (assembly 0.23 via `miden-core-lib 0.23`) in one `AccountComponent::compile` call. That framing was wrong on two counts:
+The whole workspace sits on the canonical Miden 0.22 / 0.14 line:
 
-**Path A — stay on 0.19 via `miden-stdlib`** (proven by `v019_stdlib_path.rs`):
-- `miden-stdlib 0.19.1` ships `std::math::u64::div` (line 268 of `miden-stdlib-0.19.1/asm/math/u64.masm`) with the matching `U64_DIV_EVENT_NAME` event handler (line 79 of `miden-stdlib-0.19.1/src/lib.rs`).
-- `miden-objects 0.12.4`'s bundled `Assembler` accepts the stdlib as a static library and resolves `std::math::u64::div` at compile time.
-- Therefore everything stays on the 0.19 line — `darwin::math::felt_div` is rewritten to import `std::math::u64` instead of `miden::core::math::u64`. No `miden-core-lib`, no skew.
+- `miden-assembly` + `miden-core-lib`: 0.22
+- `miden-protocol` + `miden-standards`: 0.14
+- `miden-client` + `miden-client-sqlite-store`: 0.14
+- `miden-agglayer`: 0.14
+- `pm-accounts` (astraly-labs/pragma-miden): git main, same pins
 
-**Path B — align everything on 0.22 via `miden-protocol`** (the cleanest production path):
-- `miden-client 0.14.8` (used for the on-chain deployment) depends on **`miden-protocol 0.14.5`**, which pins **`miden-assembly 0.22` + `miden-core-lib 0.22`** (verified via `crates.io/api/v1/crates/miden-protocol/0.14.5/dependencies`).
-- `miden-core-lib 0.22.3` ships `miden::core::math::u64::div` with the same event handler Darwin's math libs already use.
-- So if Darwin's workspace bumps `miden-assembly` and `miden-core-lib` from 0.23 → 0.22 and moves from `miden-objects 0.12` → `miden-protocol 0.14`, the entire stack — math libs, account component, deployment client — sits on a single 0.22 / 0.14 line.
-
-Both paths compile end-to-end today. The proof for Path A is `darwin-protocol/crates/darwin-protocol-account/tests/v019_stdlib_path.rs` (two tests, both green). Path B is the production-shape move — the 0.22 / 0.14 stack is the one `miden-client` actually executes against.
-
-**Bottom line: the version skew is a misread of the dependency graph. Darwin had picked the bleeding-edge `miden-assembly 0.23` line, which has no matching `miden-protocol` release. Rolling back to either 0.19 (with stdlib) or 0.22 (with `miden-protocol 0.14`) immediately unblocks `AccountComponent::compile`. No Miden release needed, no coordination, no wait.**
+This is the same combination that `miden-client` deploys against on testnet, and that Pragma uses in production. No bleeding-edge mismatch, no patches.
 
 ## What the Miden team can audit today
 
@@ -157,22 +147,24 @@ Both paths compile end-to-end today. The proof for Path A is `darwin-protocol/cr
 # Clone the whole org
 gh repo list darwin-miden | awk '{print $1}' | xargs -I{} gh repo clone {}
 
-# In darwin-baskets: print every on-chain account + transaction
-cd darwin-baskets && cargo run --bin testnet_inventory
+# Ping every on-chain Darwin account — should print "18/18 confirmed"
+cd darwin-protocol && cargo run -p darwin-protocol-account --bin darwin_doctor
 
-# In darwin-sdk: see the rebalance planner against synthetic snapshots
-cd ../darwin-sdk/rust && cargo run --bin rebalance_demo -- DCC --skew 2.0
+# Read a live Pragma price from a Darwin tx (end-to-end)
+cargo run -p darwin-protocol-account --features pragma-live \
+    --bin oracle_query_real -- --pair ETH/USD
+# → ETH/USD ≈ $2193.85 (live testnet)
 
-# In darwin-infra: dry-run the deployment recipe
-cd ../../darwin-infra && ./scripts/deploy-testnet.sh
+# Rebalance planner against synthetic snapshots
+cd ../darwin-sdk/rust && cargo run --bin rebalance_bot -- --once
 
-# Run the full test suite
-cd ../darwin-protocol && cargo test               # 83 tests
-cd ../darwin-sdk/rust && cargo test               # 18 tests
-cd ../ts && npm install && npm test               # 18 tests
-cd ../../darwin-baskets && cargo test             # 21 tests
-cd ../darwin-oracle-adapter && cargo test         # 11 tests
-cd ../darwin-bridge-adapter && forge test         # 13 tests
+# Full test suite (198 green, 2026-05-17)
+cd ../../darwin-protocol     && cargo test --workspace                # 90
+cd ../darwin-sdk/rust        && cargo test                            # 18
+cd ../ts                     && npm install && npm test               # 18
+cd ../../darwin-baskets      && cargo test                            # 26
+cd ../darwin-oracle-adapter  && cargo test --features pragma-live     # 17
+cd ../darwin-bridge-adapter  && cargo test --lib && forge test        # 5 + 24
 ```
 
-Every commit and transaction is browsable on [testnet.midenscan.com](https://testnet.midenscan.com) and on the GitHub org [`darwin-miden`](https://github.com/darwin-miden).
+Every commit and transaction is browsable on [testnet.midenscan.com](https://testnet.midenscan.com) and on the GitHub org [`darwin-miden`](https://github.com/darwin-miden). The frontend at the team's preview URL has four pages (`/baskets`, `/accounts`, `/flows`, `/status`) wired to a static snapshot of the same testnet registry the doctor pings.
