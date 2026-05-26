@@ -45,6 +45,30 @@ This is structurally bounded by the underlying chain, not by
 Darwin. See [architecture.md §three-flows](./architecture.md) for
 where this matters.
 
+### Flow B swap leg — real exec on Sepolia (proof-of-execution)
+
+The grant audit doc previously flagged Flow B's swap exec as
+"read-only quotes only". `darwin-sdk/rust/scripts/rebalance_exec_sepolia.sh`
+now signs + submits the three-step leg (wrap → approve →
+exactInputSingle) against Sepolia's canonical Uniswap V3
+SwapRouter02. Verified live 2026-05-27:
+
+```
+wrap     0xeb679515cfaecd3623abe0f4d7b2cb69be9aa543ee2ef3b4c19b3fff251ee4d6
+approve  0xbe0ca19f73fad0835eed765da490f1a91353b4890df6f8c83baea635668a9024
+swap     0x6ab604299dc6c08e2b13ccc5b3c5ad3b3cd54d3de2ef2aeb704ce53dba03ed54
+```
+
+Input: 0.001 ETH → 0.004992 USDC (Sepolia pool is thinly liquid +
+we use `amountOutMinimum=0`; economics are not real, this is
+proof-of-execution only). The calldata shape is byte-for-byte what
+the rebalance bot would emit in production; the only difference is
+the trigger (manual run vs `DriftDetected` event) and the
+`amountOutMinimum` guard, which would be set from a fresh quote.
+
+Verify on
+[Sepolia Etherscan](https://sepolia.etherscan.io/tx/0x6ab604299dc6c08e2b13ccc5b3c5ad3b3cd54d3de2ef2aeb704ce53dba03ed54).
+
 ### Stress throughput on the EVM-side relay (Sepolia)
 
 100 deposits fired from a single EOA against `DarwinRelayDeposit` on
@@ -121,7 +145,7 @@ Playwright 9/9 against `localhost:3010`.
 1. `darwin.xyz` DNS + production hosting — pending operator DNS
 2. ~~Live stress-scale run (100 concurrent deposits)~~ — ✅ run 2026-05-27, 99/100 in 155s, see above
 3. ~~Bali mock bridge live restart~~ — ✅ stack live on `:8080` (`/v0/tokens` answering)
-4. Real swap execution on Flow B — requires funded testnet positions
+4. ~~Real swap execution on Flow B~~ — ✅ executed 2026-05-27 (tx `0x6ab60429…` Sepolia), see above
 
 ## What is missing (external blockers)
 
