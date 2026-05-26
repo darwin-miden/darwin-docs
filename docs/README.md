@@ -1,6 +1,7 @@
 # Darwin docs index
 
 - [architecture.md](./architecture.md) — components, accounts, flows
+- [status.md](./status.md) — verified live state + headline numbers (refreshed 2026-05-27)
 - [contracts.md](./contracts.md) — live testnet + Sepolia contracts with addresses
 - [baskets.md](./baskets.md) — DCC, DAG, DCO, DPP composition
 - [bali-integration.md](./bali-integration.md) — canonical Sepolia↔Miden bridge
