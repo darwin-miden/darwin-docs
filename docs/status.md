@@ -45,6 +45,23 @@ This is structurally bounded by the underlying chain, not by
 Darwin. See [architecture.md §three-flows](./architecture.md) for
 where this matters.
 
+### Stress throughput on the EVM-side relay (Sepolia)
+
+100 deposits fired from a single EOA against `DarwinRelayDeposit` on
+Sepolia via the canonical Sepolia public RPC, with nonces pre-pinned
+so the 10 in-flight submitters actually parallelise instead of
+colliding on nonce.
+
+```
+N=100  P=10  ok=99/100  wall=155s
+submit_seconds  p50=12  p75=22  p90=24  p95=25  p99=25  min=9  max=25
+```
+
+Throughput: ~0.65 tx/s sustained from one EOA. The single failure
+(idx=67) was a transient RPC hiccup; 99% success rate end-to-end.
+Run captured 2026-05-27 in
+[`darwin-relay/results/stress-scale-1779835339.tsv`](https://github.com/darwin-miden/darwin-relay/blob/main/results/stress-scale-1779835339.tsv).
+
 ### Relay observability
 
 Relay v2 exposes `/metrics` in Prometheus text format on the same
@@ -102,8 +119,8 @@ Playwright 9/9 against `localhost:3010`.
 ## What is still missing (controllable)
 
 1. `darwin.xyz` DNS + production hosting — pending operator DNS
-2. Live stress-scale run (100 concurrent deposits) — harness shipped, run pending
-3. Bali mock bridge live restart for demo capture — script shipped, run pending
+2. ~~Live stress-scale run (100 concurrent deposits)~~ — ✅ run 2026-05-27, 99/100 in 155s, see above
+3. ~~Bali mock bridge live restart~~ — ✅ stack live on `:8080` (`/v0/tokens` answering)
 4. Real swap execution on Flow B — requires funded testnet positions
 
 ## What is missing (external blockers)
