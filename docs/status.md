@@ -58,18 +58,39 @@ Fresh L1↔L2 round-trip submitted to capture new evidence:
 - Destination: relay wallet `0xed3cd5befa3207805f8529207cfc0d`
   (ETH-padded form `0x00000000ed3cd5befa3207805f8529207cfc0d00`)
 
-**L2 → L1 (Miden → Sepolia, 0.0005 ETH):**
+**L2 → L1 (Miden → Sepolia) — ✅ END-TO-END PROVEN:**
 
-- Miden tx `0x0b8c59ea7318c7bd0d782b4a513ee53f65ef9dd42f725e96f59f1a9611f337b6`
-- Submitted via `gateway-fm/miden-agglayer` `bridge-out-tool` from the
-  relay wallet. Burns 50000 base units of the Bali ETH faucet
-  (`0xe63ba7bc2c19ff603c52c67fa4426d`, 8 decimals).
-- Relay wallet ETH-faucet balance: `100000 → 50000` (confirmed by miden-client)
-- Destination: dev key `0xf6d3C9Ed2115A5197F96f6189F6D63B51022Fe16` on Sepolia, dest_network=0
-- Expected ~30–90 min per gateway-fm guidance, can be longer; the
-  L2→L1 path has known instability on the relaunched outpost (per
-  current persistent watch on prior tx `0x222e2015…`, claims=0
-  after ~12+ hours — gateway-fm fix in flight)
+The L2→L1 path requires three steps that we now have all
+instrumented:
+
+  1. Submit the B2AGG note on Miden via `gateway-fm/miden-agglayer`'s
+     `bridge-out-tool` (we already had this).
+  2. Wait for the agglayer certificate to settle (~30–90 min, hourly
+     cadence). The bridge service's `/api/bridges/<dest>` flips
+     `ready_for_claim` to `true` when ready.
+  3. **Call `claimAsset` on the Sepolia bridge** with the merkle
+     proof from `/api/merkle-proof?deposit_cnt=N&net_id=76`. The
+     Bali stack does *not* auto-claim — the recipient (or any payer)
+     must submit this final tx. This was the missing step in our
+     prior pipeline: certificates were `ready_for_claim=true` for
+     hours, the persistent watch correctly reported `claims=0`, and
+     we mistakenly believed gateway-fm was holding the line.
+
+Helper: [`darwin-infra/scripts/bali-l1-claim.sh`](https://github.com/darwin-miden/darwin-infra/blob/main/scripts/bali-l1-claim.sh)
+takes `DEPOSIT_CNT` + `DEST_ADDR`, fetches the proof, builds the
+SMT arrays, submits `claimAsset(bytes32[32], bytes32[32], uint256,
+bytes32, bytes32, uint32, address, uint32, address, uint256, bytes)`.
+
+Live evidence 2026-05-27:
+
+| Step | Miden tx (B2AGG note) | Sepolia claim tx | Amount |
+|---|---|---|---|
+| deposit_cnt=7 (prior outbound) | `0x222e2015…` | [`0x826e1e16…`](https://sepolia.etherscan.io/tx/0x826e1e16349bf51f2ced344de02def3c26ca723468d2ccc32f66f24d94642ce1) | 0.0005 ETH |
+| deposit_cnt=8 (fresh outbound) | `0x0b8c59ea…` | [`0xc5e6bc11…`](https://sepolia.etherscan.io/tx/0xc5e6bc113ea639a56897da8be3e7dc58b8013c458ee684aa77756d6e3fb0e3df) | 0.0005 ETH |
+
+Both `status=1`, ClaimEvents emitted at the L1 bridge address, dev
+key balance credited (minus gas) for each. Persistent watch exited
+with `✓ claim landed` at iter 1202.
 
 ### Flow B swap leg — real exec on Sepolia (proof-of-execution)
 

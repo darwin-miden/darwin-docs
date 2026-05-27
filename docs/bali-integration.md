@@ -53,14 +53,49 @@ polls `/api/bridges/:dest` every 30 s and shows the lifecycle:
 
 ## L2 → L1 path (Miden → Sepolia)
 
-Not wired into the v2 worker yet. Brian's 1Click mock outbound uses
-its own `bridge_out_v1` MASM script; the canonical Bali agglayer
-outbound uses a different note format (`B2AGG` in the gateway-fm
-codebase) requiring the [`bridge-out-tool`](https://github.com/gateway-fm/miden-agglayer/tree/main/scripts)
-binary or a custom note builder.
+Three steps, the last of which is easy to forget:
 
-Expected timing per revitteth on `0xMiden/miden-client#2173`:
-~30-90 min on the happy path post-relaunch.
+1. **Submit B2AGG note on Miden** via gateway-fm's `bridge-out-tool`
+   (canonical Bali outbound format). Brian's 1Click mock outbound
+   uses a different `bridge_out_v1` MASM script and is not the same
+   thing. `bridge-out-tool` lives in
+   [`gateway-fm/miden-agglayer`](https://github.com/gateway-fm/miden-agglayer/tree/main/scripts);
+   build with `cargo build --release --bin bridge-out-tool`.
+
+2. **Wait for the agglayer certificate to settle.** AggLayer
+   settles certificates on a once-per-hour cadence, aggsender
+   builds at the 50%-of-epoch mark; wall time ~30–90 min. Poll
+   `/api/bridges/<eth_dest>`; the deposit is ready when
+   `ready_for_claim=true`.
+
+3. **Call `claimAsset` on the Sepolia bridge.** This step is
+   permissionless and *required* — the Bali stack does *not*
+   auto-claim. Until someone submits it, the funds sit on the L1
+   bridge contract indefinitely. The merkle proof comes from
+   `/api/merkle-proof?deposit_cnt=<N>&net_id=76`. The 11-arg
+   signature is
+   `claimAsset(bytes32[32], bytes32[32], uint256, bytes32, bytes32,
+   uint32, address, uint32, address, uint256, bytes)`.
+
+   `darwin-infra/scripts/bali-l1-claim.sh` wraps all of step 3
+   (fetch proof + pad SMT to 32 siblings + cast send):
+
+   ```sh
+   DEPOSIT_CNT=8 DEST_ADDR=0xf6d3C9Ed... ./scripts/bali-l1-claim.sh
+   ```
+
+### First successful L2→L1 round-trip on Bali net 76
+
+Verified 2026-05-27:
+
+| Step | Tx |
+|---|---|
+| L2 burn (B2AGG note) | Miden `0x0b8c59ea7318c7bd0d782b4a513ee53f65ef9dd42f725e96f59f1a9611f337b6` |
+| L1 claim | Sepolia [`0xc5e6bc113ea639a56897da8be3e7dc58b8013c458ee684aa77756d6e3fb0e3df`](https://sepolia.etherscan.io/tx/0xc5e6bc113ea639a56897da8be3e7dc58b8013c458ee684aa77756d6e3fb0e3df) |
+
+Amount: 50000 Miden ETH-faucet units → 0.0005 ETH on Sepolia.
+Wall time burn-to-claim ~25 min on this run (would have been longer
+if the agglayer cert hadn't been already mid-epoch at burn time).
 
 ## Verification artefacts
 
