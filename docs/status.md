@@ -49,11 +49,12 @@ where this matters.
 
 Fresh L1↔L2 round-trip submitted to capture new evidence:
 
-**L1 → L2 (Sepolia → Miden, 0.0005 ETH):**
+**L1 → L2 (Sepolia → Miden, 0.0005 ETH) — ✅ CLAIMED:**
 
 - Sepolia tx [`0x814a3175adfe3fe396eb2641747d345bdfcf1ecfde9a2070bb748203a8e0782c`](https://sepolia.etherscan.io/tx/0x814a3175adfe3fe396eb2641747d345bdfcf1ecfde9a2070bb748203a8e0782c) block `10931760`
-- Indexed on Bali bridge service immediately, `ready_for_claim=False` initially
-- Expected ~25–30 min before `ready_for_claim=true` and solver mints the P2ID claim note on Miden
+- Miden claim tx `0xf299cfbe5f839b05923e97c6adaf0c408ab823b056349c397b2327b7c50f5a67`
+- Round-trip ~60 min (Sepolia submit → Bali aggsender GER push → solver mint)
+- `deposit_cnt=1132975`, `global_index=18446744073710684591`
 - Destination: relay wallet `0xed3cd5befa3207805f8529207cfc0d`
   (ETH-padded form `0x00000000ed3cd5befa3207805f8529207cfc0d00`)
 
