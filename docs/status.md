@@ -15,6 +15,33 @@ right now**.
 
 **No bloqueur remaining inside our scope.** The L2→L1 last-mile we believed was stuck on gateway-fm was a missing `claimAsset` call on our side; closed today with `darwin-infra/scripts/bali-l1-claim.sh`. Sepolia claim txs [`0xc5e6bc11…`](https://sepolia.etherscan.io/tx/0xc5e6bc113ea639a56897da8be3e7dc58b8013c458ee684aa77756d6e3fb0e3df) + [`0x826e1e16…`](https://sepolia.etherscan.io/tx/0x826e1e16349bf51f2ced344de02def3c26ca723468d2ccc32f66f24d94642ce1) verify end-to-end. Flow B real swap exec verified [`0x6ab60429…`](https://sepolia.etherscan.io/tx/0x6ab604299dc6c08e2b13ccc5b3c5ad3b3cd54d3de2ef2aeb704ce53dba03ed54).
 
+### Full prod-ready demo path (added 2026-05-27 evening)
+
+The redemption pipeline is now wired end-to-end through canonical
+Bali instead of Brian's 1Click mock. Three pieces shipped this
+afternoon:
+
+- **`RedeemPanel`** on `/portfolio` — user clicks Redeem, the
+  relay v2 worker creates a pending redemption row.
+- **`darwin_relay_v2_worker` B2AGG outbound** — the worker burns
+  basket tokens on the v6 controller, then emits a canonical
+  `B2AggNote` from the relay wallet to the user's Sepolia EOA via
+  the Bali bridge. No 1Click in the loop, no Brian-mock dependency.
+  Selectable via `DARWIN_RELAY_V2_OUTBOUND_MODE` (default `b2agg`;
+  set `bridge_out_v1` to keep the legacy path).
+- **`BaliClaimPanel`** on `/portfolio` — user clicks "Claim on
+  Sepolia" for any `ready_for_claim=true` deposit, the panel
+  fetches the merkle proof, builds the calldata, and calls
+  `claimAsset` via wagmi. The worker's `process_outbound_status_b2agg`
+  poller then sees the new `claim_tx_hash` and updates
+  `redemptions.sepolia_release_tx` so the lifecycle table
+  reflects the L1 release.
+
+The whole loop is therefore: **UI click → relay worker → on-chain
+B2AGG → user UI claim → L1 release → UI lifecycle update**, all in
+≤90 min wall time, all trustless past the user signing two
+transactions.
+
 ## Live numbers (verified 2026-05-27)
 
 ### Read-only target NAV (proposal "<200ms NAV view" target)
