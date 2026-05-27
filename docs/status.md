@@ -9,11 +9,11 @@ right now**.
 
 | Bloc | Done | Partial | External-blocked |
 |---|---|---|---|
-| **M1** | **6/6** | — | AggLayer L2→L1 (gateway-fm fix in flight) |
-| **M2** | **4/4** | Real swap exec, NEAR canonical Miden listing | — |
-| **M3** | **2/5** | — | 3 mainnet items, waitlist/launch (pre-launch) |
+| **M1** | **6/6** ✅ | — | — (L2→L1 was *not* blocked — it just needs the explicit `claimAsset` trigger, now scripted + proven) |
+| **M2** | **4/4** ✅ | Brian's 1Click outbound poller, NEAR canonical Miden listing | — |
+| **M3** | **2/5** | — | 3 mainnet items (Miden mainnet Q3 2026), DNS darwin.xyz (operator), waitlist/launch (pre-launch) |
 
-The 3 ❌ M3 items are 100% gated on Miden mainnet (target Q3 2026).
+**No bloqueur remaining inside our scope.** The L2→L1 last-mile we believed was stuck on gateway-fm was a missing `claimAsset` call on our side; closed today with `darwin-infra/scripts/bali-l1-claim.sh`. Sepolia claim txs [`0xc5e6bc11…`](https://sepolia.etherscan.io/tx/0xc5e6bc113ea639a56897da8be3e7dc58b8013c458ee684aa77756d6e3fb0e3df) + [`0x826e1e16…`](https://sepolia.etherscan.io/tx/0x826e1e16349bf51f2ced344de02def3c26ca723468d2ccc32f66f24d94642ce1) verify end-to-end. Flow B real swap exec verified [`0x6ab60429…`](https://sepolia.etherscan.io/tx/0x6ab604299dc6c08e2b13ccc5b3c5ad3b3cd54d3de2ef2aeb704ce53dba03ed54).
 
 ## Live numbers (verified 2026-05-27)
 
