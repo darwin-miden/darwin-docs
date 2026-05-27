@@ -42,6 +42,32 @@ B2AGG → user UI claim → L1 release → UI lifecycle update**, all in
 ≤90 min wall time, all trustless past the user signing two
 transactions.
 
+### Live B2AGG round-trip — verified end-to-end (2026-05-27 evening)
+
+The B2AGG-mode worker switch was put through a full real run this
+evening. Single redemption (`31eedae6-…`, DAG basket, amount=100
+in 8-decimal base units), all four expected tx hashes captured:
+
+| Step | Wall clock | Tx |
+|---|---|---|
+| 1. Redemption submitted via `POST /v0/redeem` | t=0 | `redemption_id=31eedae6-1eb7-48f7-aa6e-37ea3f50b3ad` |
+| 2. Worker burns basket on Miden (`atomic_redeem_note`) | t+~30s | `0xb11c0c44d15a55eaa2b8d8c15ed0aa9bb5148322d5a49bf90ecd295242b0bf2d` |
+| 3. Worker emits canonical B2AGG note | t+~35s | `0x2d4343d6e0fc403d0641321856a6c338644800bec27ea9b122a644cb09fbfc5b` |
+| 4. AggLayer cert settles (`ready_for_claim=true`) | t+~20 min | bridge service `deposit_cnt=9` |
+| 5. User calls `claimAsset` on Sepolia | t+~22 min | [`0xbb4e2ff2b28ee2000757ff0a5048c5c443f631e1e9763500049e7beb39aafba4`](https://sepolia.etherscan.io/tx/0xbb4e2ff2b28ee2000757ff0a5048c5c443f631e1e9763500049e7beb39aafba4) |
+| 6. Worker status poller writes `sepolia_release_tx` | t+~22.5 min | sqlite ✓ within next 30s tick |
+
+Total wall time burn-to-credit: **~25 min** (the agglayer hourly
+cadence is the dominant component; we caught a mid-epoch cert
+which made this run faster than the typical 30-90 min window).
+
+Two correctness bugs were caught + fixed during this verification
+and are pinned in `v0.4.1-m3` on darwin-relay:
+
+- decimal scaling Miden 8-dec → Sepolia 18-dec wei
+- status poller false-positive cross-match with legacy 1Click
+  redemptions of the same basket_amount
+
 ## Live numbers (verified 2026-05-27)
 
 ### Read-only target NAV (proposal "<200ms NAV view" target)
