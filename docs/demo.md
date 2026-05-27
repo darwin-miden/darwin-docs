@@ -7,7 +7,31 @@ transaction hashes captured during the verification run on
 This page is for grant reviewers / integrators who want to see what
 the system does end-to-end without setting up a local stack. Every
 tx hash links to an explorer; every component link points at the
-public source.
+public source. Screenshots below are captured live from
+`localhost:3010` via Playwright; the small "2 Issues" badge visible
+on some panels is the Next.js dev-mode indicator and would not
+appear in production.
+
+## Screens
+
+The basket browser, the basket detail page (with the live NAV
+ticker + the 30-day history chart), the portfolio scaffolding, and
+the flows page:
+
+| Route | Screenshot |
+|---|---|
+| `/` | ![landing](./img/01-landing.png) |
+| `/baskets` | ![basket browser](./img/02-baskets.png) |
+| `/baskets/dcc` | ![DCC detail](./img/03-basket-dcc.png) |
+| `/portfolio` (no wallet) | ![portfolio](./img/04-portfolio-no-wallet.png) |
+| `/flows` | ![flows narrative](./img/05-flows.png) |
+
+The DCC detail screen above carries the **live target NAV from
+Pragma** (the "1762 ms via coingecko" badge is a cold-cache fetch
+in this dev capture; the warmer typically keeps it at the
+single-digit ms shown in the perf numbers below), the **30-day
+NAV history chart**, the **deposit panel with the 1Click and Miden
+tabs**, and the **target composition** on the right.
 
 ---
 
