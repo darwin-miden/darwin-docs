@@ -45,6 +45,31 @@ This is structurally bounded by the underlying chain, not by
 Darwin. See [architecture.md §three-flows](./architecture.md) for
 where this matters.
 
+### Bali agglayer round-trip — fresh runs (2026-05-27)
+
+Fresh L1↔L2 round-trip submitted to capture new evidence:
+
+**L1 → L2 (Sepolia → Miden, 0.0005 ETH):**
+
+- Sepolia tx [`0x814a3175adfe3fe396eb2641747d345bdfcf1ecfde9a2070bb748203a8e0782c`](https://sepolia.etherscan.io/tx/0x814a3175adfe3fe396eb2641747d345bdfcf1ecfde9a2070bb748203a8e0782c) block `10931760`
+- Indexed on Bali bridge service immediately, `ready_for_claim=False` initially
+- Expected ~25–30 min before `ready_for_claim=true` and solver mints the P2ID claim note on Miden
+- Destination: relay wallet `0xed3cd5befa3207805f8529207cfc0d`
+  (ETH-padded form `0x00000000ed3cd5befa3207805f8529207cfc0d00`)
+
+**L2 → L1 (Miden → Sepolia, 0.0005 ETH):**
+
+- Miden tx `0x0b8c59ea7318c7bd0d782b4a513ee53f65ef9dd42f725e96f59f1a9611f337b6`
+- Submitted via `gateway-fm/miden-agglayer` `bridge-out-tool` from the
+  relay wallet. Burns 50000 base units of the Bali ETH faucet
+  (`0xe63ba7bc2c19ff603c52c67fa4426d`, 8 decimals).
+- Relay wallet ETH-faucet balance: `100000 → 50000` (confirmed by miden-client)
+- Destination: dev key `0xf6d3C9Ed2115A5197F96f6189F6D63B51022Fe16` on Sepolia, dest_network=0
+- Expected ~30–90 min per gateway-fm guidance, can be longer; the
+  L2→L1 path has known instability on the relaunched outpost (per
+  current persistent watch on prior tx `0x222e2015…`, claims=0
+  after ~12+ hours — gateway-fm fix in flight)
+
 ### Flow B swap leg — real exec on Sepolia (proof-of-execution)
 
 The grant audit doc previously flagged Flow B's swap exec as
