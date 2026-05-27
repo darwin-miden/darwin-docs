@@ -4,6 +4,8 @@ Darwin is a **confidential basket protocol on Miden**. Users deposit underlying 
 
 The product surface lives at [darwin.xyz](https://darwin.xyz). This repo is the home of the longer-form internal notes that are too dense to belong on the site.
 
+**Browse this documentation as a site:** [`darwin-miden.github.io/darwin-docs`](https://darwin-miden.github.io/darwin-docs/) — most reviewers should start with [demo.md](https://darwin-miden.github.io/darwin-docs/demo) (end-to-end UI walkthrough with live tx hashes) and [status.md](https://darwin-miden.github.io/darwin-docs/status) (verified state).
+
 ## Project layout
 
 Darwin is organised as a multi-repo project under the [`darwin-miden`](https://github.com/darwin-miden) GitHub organisation:
