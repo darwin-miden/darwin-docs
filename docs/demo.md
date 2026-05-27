@@ -27,11 +27,13 @@ the flows page:
 | `/flows` | ![flows narrative](./img/05-flows.png) |
 
 The DCC detail screen above carries the **live target NAV from
-Pragma** (the "1762 ms via coingecko" badge is a cold-cache fetch
-in this dev capture; the warmer typically keeps it at the
-single-digit ms shown in the perf numbers below), the **30-day
-NAV history chart**, the **deposit panel with the 1Click and Miden
-tabs**, and the **target composition** on the right.
+Pragma**: `$30,967.27` rendered with the **`83 ms via
+pragma-miden+fallback`** latency badge — that's the warm-cache path
+hitting `/api/nav` with Pragma as source-of-truth for ETH/WBTC/DAI
+and per-pair CoinGecko backfill for USDT (whose Pragma testnet
+publisher is broken). The **30-day NAV history chart**, the
+**deposit panel with the 1Click and Miden tabs**, and the
+**target composition** on the right are all rendered live.
 
 ---
 
