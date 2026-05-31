@@ -147,7 +147,7 @@ with `✓ claim landed` at iter 1202.
 
 ### Flow B swap leg — real exec on Sepolia (proof-of-execution)
 
-The grant audit doc previously flagged Flow B's swap exec as
+An earlier audit flagged Flow B's swap exec as
 "read-only quotes only". `darwin-sdk/rust/scripts/rebalance_exec_sepolia.sh`
 now signs + submits the three-step leg (wrap → approve →
 exactInputSingle) against Sepolia's canonical Uniswap V3

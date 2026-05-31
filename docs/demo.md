@@ -4,7 +4,7 @@ A guided walkthrough of the user-visible flows, with the live
 transaction hashes captured during the verification run on
 **2026-05-27** as proof.
 
-This page is for grant reviewers / integrators who want to see what
+This page is for integrators who want to see what
 the system does end-to-end without setting up a local stack. Every
 tx hash links to an explorer; every component link points at the
 public source. Screenshots below are captured live from
