@@ -236,7 +236,7 @@ the dashboard. A 6-panel Grafana JSON ships in
 
 ## Repos + tags
 
-11 public repos under `github.com/darwin-miden/*`, all `v0.3.0-m3`
+11 public repos under `github.com/darwin-miden/*`, all `v0.4.0-m3` or later (darwin-infra latest: `v0.4.4-m3`)
 tags present on remotes. `next build` clean, `tsc --noEmit` clean,
 Playwright 9/9 against `localhost:3010`.
 
