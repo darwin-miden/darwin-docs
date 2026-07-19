@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Darwin Docs — Confidential baskets on Miden</title>
+<meta name="description" content="Architecture of Darwin, a confidential basket protocol native to Miden." />
+<style>
+  :root {
+    --bg:#f6f5f1; --surface:#fffefb; --ink:#1a1c1e; --muted:#585c62; --faint:#8a8f96;
+    --hair:#e4e1d8; --rule:#d8d4c8; --orange:#c2510a; --priv:#0a7d54; --pub:#b5670f;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --sans: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --shadow:0 1px 2px rgba(20,20,15,.05),0 6px 20px rgba(20,20,15,.04);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#111316; --surface:#181b1f; --ink:#e8e9ec; --muted:#9aa0a8; --faint:#6b7178;
+      --hair:#282c31; --rule:#30353b; --orange:#f0894a; --priv:#3fd39a; --pub:#e6a15a;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28); }
+  }
+  :root[data-theme="light"]{ --bg:#f6f5f1; --surface:#fffefb; --ink:#1a1c1e; --muted:#585c62; --faint:#8a8f96; --hair:#e4e1d8; --rule:#d8d4c8; --orange:#c2510a; --priv:#0a7d54; --pub:#b5670f; --shadow:0 1px 2px rgba(20,20,15,.05),0 6px 20px rgba(20,20,15,.04); }
+  :root[data-theme="dark"]{ --bg:#111316; --surface:#181b1f; --ink:#e8e9ec; --muted:#9aa0a8; --faint:#6b7178; --hair:#282c31; --rule:#30353b; --orange:#f0894a; --priv:#3fd39a; --pub:#e6a15a; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28); }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .layout{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:210px 1fr;gap:44px;padding:0 24px}
+  @media(max-width:820px){ .layout{grid-template-columns:1fr;gap:0} aside{display:none} }
+  /* header */
+  header.top{border-bottom:1px solid var(--hair);background:var(--surface)}
+  .top-in{max-width:1080px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;gap:14px}
+  .brand{font-weight:640;font-size:16px;letter-spacing:-.01em}
+  .brand .dot{color:var(--orange)}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--hair);border-radius:999px;padding:3px 9px}
+  .top-in .gh{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--muted);border-bottom:1px dotted var(--rule);text-decoration:none}
+  /* sidebar */
+  aside{position:sticky;top:0;align-self:start;padding-top:40px}
+  aside nav{display:flex;flex-direction:column;gap:2px}
+  aside .grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:18px 0 6px}
+  aside a{font-size:13.5px;color:var(--muted);text-decoration:none;padding:3px 0;border-left:2px solid transparent;padding-left:10px;margin-left:-12px}
+  aside a:hover{color:var(--ink)}
+  /* content */
+  main{padding:40px 0 90px;min-width:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin:0 0 12px}
+  h1{font-size:clamp(2rem,4.5vw,2.9rem);line-height:1.06;letter-spacing:-.025em;margin:0 0 14px;font-weight:600;text-wrap:balance}
+  .lede{font-size:18px;color:var(--muted);max-width:64ch;margin:0 0 8px}
+  h2{font-size:13px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:52px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--hair);scroll-margin-top:20px}
+  h3{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:26px 0 8px}
+  p{margin:0 0 12px;max-width:68ch}
+  main a.inline{color:var(--orange);text-decoration:none;border-bottom:1px solid transparent}
+  main a.inline:hover{border-bottom-color:currentColor}
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface);border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
+  ul{margin:0 0 14px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+  li{padding-left:20px;position:relative;color:var(--muted);max-width:66ch}
+  li::before{content:"—";position:absolute;left:0;color:var(--faint)}
+  li b{color:var(--ink);font-weight:600}
+  .table-wrap{overflow-x:auto;margin:6px 0 16px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--hair);vertical-align:top}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  td b{color:var(--ink)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+  .chip{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.03em;padding:4px 10px;border-radius:6px}
+  .chip.priv{color:var(--priv);background:color-mix(in srgb,var(--priv) 14%,transparent)}
+  .chip.pub{color:var(--pub);background:color-mix(in srgb,var(--pub) 15%,transparent)}
+  .callout{background:var(--surface);border:1px solid var(--hair);border-left:3px solid var(--orange);border-radius:10px;padding:14px 16px;margin:16px 0;box-shadow:var(--shadow)}
+  .callout p{margin:0;font-size:14px;color:var(--muted)}
+  footer{border-top:1px solid var(--hair);color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+  .foot-in{max-width:1080px;margin:0 auto;padding:26px 24px;display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <span class="brand">Darwin<span class="dot">.</span> Docs</span>
+    <span class="badge">Miden testnet</span>
+    <a class="gh" href="https://github.com/darwin-miden" target="_blank" rel="noreferrer">github ↗</a>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <nav>
+      <div class="grp">Protocol</div>
+      <a href="#overview">Overview</a>
+      <a href="#domains">Domains</a>
+      <a href="#accounts">Accounts</a>
+      <a href="#notes">Note scripts</a>
+      <a href="#flows">Flows</a>
+      <div class="grp">Details</div>
+      <a href="#mint">Mint &amp; redeem</a>
+      <a href="#oracle">Oracle &amp; NAV</a>
+      <a href="#bridge">Bridge</a>
+      <a href="#confidentiality">Confidentiality</a>
+      <a href="#keys">Self-custody</a>
+    </nav>
+  </aside>
+
+  <main>
+    <p class="eyebrow">Architecture</p>
+    <h1>Confidential baskets, native to Miden.</h1>
+    <p class="lede">Darwin lets a user hold a STARK-proven basket position as a private note in a self-custodial Miden wallet. The token balance lives in the user's private vault, with no per-user ledger on-chain. Value enters and leaves through the Epoch bridge; deposit and redeem notes are executed by the Miden network itself, never a custodian.</p>
+
+    <h2 id="overview">Overview</h2>
+    <p>Two entry paths converge on one confidential position. An ETH user bridges Sepolia USDC via Epoch and lets the network execute the deposit; a native Miden-wallet user signs a deposit note directly. In both cases basket tokens are minted — bound 1:1 to the real collateral — into a private note only the depositor can open.</p>
+    <div class="chips">
+      <span class="chip priv">private position</span>
+      <span class="chip priv">self-custodial keys</span>
+      <span class="chip pub">network-executed</span>
+    </div>
+
+    <h2 id="domains">Domains</h2>
+    <div class="table-wrap"><table>
+      <tr><th>Domain</th><th>Role</th></tr>
+      <tr><td><b>Sepolia (EVM)</b></td><td>Users hold USDC and sign the bridge intent. Test USDC <code>0x2BB4FfD7…</code> (18-dec); Epoch's Compact/Allocator contracts settle the bridge.</td></tr>
+      <tr><td><b>Operator</b></td><td>Builds the confidential notes with the native <code>miden-client</code> (the browser Web SDK cannot yet build a note targeting a network account) and serves the frontend. Never custodies funds or keys.</td></tr>
+      <tr><td><b>Miden (testnet)</b></td><td>Where positions live: the user's private wallet, the bridged dUSDC faucet, the basket faucets (network accounts), and the network transaction builder that executes deposit/redeem notes.</td></tr>
+    </table></div>
+
+    <h2 id="accounts">Accounts &amp; components</h2>
+    <ul>
+      <li><b>User wallet</b> — a private Miden account; positions are the private token balances in its vault.</li>
+      <li><b>Basket faucets</b> — one network-account fungible faucet per basket (DCC, DAG, DCO). On consuming a deposit note, the faucet drains the dUSDC collateral into its vault and mints basket tokens into a private note.</li>
+      <li><b>Bridged dUSDC faucet</b> — the Miden-side representation of Epoch-bridged USDC (6-dec).</li>
+      <li><b>NTX builder</b> — the Miden network executor; consumes network-tagged public notes and mints/burns inside the network transaction.</li>
+      <li><b>Backup controller</b> — a public NoAuth controller whose storage holds the AES-encrypted wallet backup (ciphertext only).</li>
+    </ul>
+
+    <h2 id="notes">Note scripts</h2>
+    <h3>Deposit note</h3>
+    <p><code>confidential_deposit_note</code> carries the user's dUSDC collateral and targets a basket faucet as a network-account target. On consumption it drains the collateral into the faucet vault and mints basket tokens into a private payback note addressed to the depositor.</p>
+    <h3>Redeem note</h3>
+    <p><code>confidential_redeem_note</code> is symmetric: it carries basket tokens back to the faucet, which burns them and releases the underlying dUSDC into a private payback note, bridged back to Sepolia via Epoch.</p>
+    <div class="callout"><p>The collateral-carrying deposit/redeem note is <b>public</b> — a network account only consumes public notes. The minted/released payback is <b>private</b>: its contents live off-chain, handed to the recipient's browser to import and consume.</p></div>
+
+    <h2 id="flows">Flows</h2>
+    <ul>
+      <li><b>Deposit</b> — bridge/faucet dUSDC → confidential deposit note → the network drains the collateral and mints basket tokens 1:1 into a private note → the browser imports and consumes it. STARK-proven, executed by the network.</li>
+      <li><b>Redeem</b> — burn basket tokens → the network releases dUSDC into a private note → bridged back to Sepolia via Epoch.</li>
+    </ul>
+
+    <h2 id="mint">Mint &amp; redeem logic</h2>
+    <p>The mint is bound to the <b>real drained collateral</b>, not to any emitter-supplied value. The note reads the single asset actually carried, asserts its faucet is the dUSDC faucet, and mints that exact amount <b>1:1</b>. Fee/NAV storage felts are ignored by the mint — an emitter cannot inflate the ratio. Redeem is the inverse: the payout equals the real burned amount, and the released asset's faucet is asserted to be dUSDC. Both legs conserve value exactly, validated on-chain.</p>
+
+    <h2 id="oracle">Oracle &amp; NAV</h2>
+    <p>The oracle adapter reads a Pragma testnet median through a foreign-account call, returning the median on the VM stack; feeds cover the basket constituents (BTC, ETH, WBTC, USDT, DAI). Weighted-sum NAV math consumes those prices with the target weights, and a fallback degrades gracefully when a feed is unavailable. NAV is used for display and valuation; the confidential mint itself is 1:1, independent of NAV.</p>
+
+    <h2 id="bridge">Bridge &amp; on-ramp</h2>
+    <p>Value moves between Sepolia and Miden through <b>Epoch</b>, a hosted allocator/solver chosen on Miden-team guidance and validated end to end on testnet. It replaces the earlier AggLayer/Bali path and the custodial relay wallet, both retired.</p>
+    <ul>
+      <li><b>In (deposit)</b> — the user signs a Compact deposit on Sepolia; Epoch's solver bridges and delivers dUSDC to the user's Miden wallet, which funds the deposit note.</li>
+      <li><b>Out (redeem)</b> — the released dUSDC is bridged back to the user's Sepolia address via an Epoch intent.</li>
+    </ul>
+    <p>Basket positions are confidential and native to Miden, so basket tokens are <b>not</b> exposed as ERC-20s on Ethereum; only the underlying collateral crosses the bridge.</p>
+
+    <h2 id="confidentiality">Confidentiality model</h2>
+    <div class="chips">
+      <span class="chip priv">private: payback contents · balance · backup plaintext</span>
+    </div>
+    <div class="chips">
+      <span class="chip pub">public: deposit/redeem notes · faucet AUM · bridge legs</span>
+    </div>
+    <p>The design keeps the resulting position confidential while the entry and exit legs are transparent — a deliberate trade of on-chain executability (network accounts) against full transaction privacy. Hardening the entry/exit legs is tracked separately.</p>
+
+    <h2 id="keys">Self-custody &amp; keys</h2>
+    <p>The Miden wallet is derived deterministically from one EVM signature (EIP-712, network-independent domain, low-s canonicalized, EOA-guarded). The Falcon key is held in the browser and never reaches the operator. An encrypted, browser-side backup lets a user restore the wallet on a new device by re-signing; only ciphertext is stored.</p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot-in">
+    <span>Darwin — confidential basket protocol on Miden testnet.</span>
+    <span>MIT · <a href="https://github.com/darwin-miden" style="color:inherit;border-bottom:1px dotted var(--rule);text-decoration:none">github.com/darwin-miden</a></span>
+  </div>
+</footer>
+
+<script>
+  // honor the viewer's stored theme toggle if present; default follows OS.
+  try{var t=localStorage.getItem("darwin-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}
+</script>
+</body>
+</html>
