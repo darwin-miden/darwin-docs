@@ -68,8 +68,17 @@ wallet on a new device by re-signing; only ciphertext is stored.
 ### §6.2 NAV precision & math
 
 Fixed-point weighted-sum and per-share routines (`nav.masm`, `math.masm`) compute
-a basket NAV from constituent prices and target weights, using integer `felt_div`
-with defined precision. Unit-tested on the Miden VM.
+a basket NAV from constituent prices and target weights. Integer division uses
+`math::felt_div` (u64-safe) for single-operand quotients, and `math::mul_div` for
+the NAV mint/redeem ratios — `shares = net·S/V` and `payout = s·V/S` — whose
+intermediate product exceeds u64 for any real basket. A plain field multiply would
+reduce that product mod the Goldilocks prime `p` and silently over-mint; `mul_div`
+instead forms the **exact 128-bit product** (`u64::widening_mul`) and performs a
+restoring 128÷64 long division whose running remainder and quotient stay in u64, so
+no field wrap can corrupt the share count. Out-of-range inputs **revert** rather
+than wrapping (divisor 0 or ≥ 2⁶³, quotient ≥ 2⁶⁴, result ≥ `p`). Unit-tested on
+the Miden VM against a `u128` reference, including a sweep across the u64 boundary
+and products that exceed it.
 
 ### §6.3 Mint
 
@@ -127,6 +136,16 @@ median on the VM stack; feeds cover the basket constituents (BTC, ETH, WBTC,
 USDT, DAI). The NAV math (§6.2) consumes those prices with the target weights. A
 fallback degrades gracefully when a feed is unavailable. NAV is used for display
 and valuation; the confidential mint itself is 1:1 (§6.3), independent of NAV.
+
+**On-chain live pricing (FPI).** A basket faucet can price its vault entirely
+on-chain, with no trusted price keeper: `pragma_fpi::load_prices` reads the live
+Pragma median for each constituent through a foreign-procedure call
+(`execute_foreign_procedure`), and `price_oracle::compute_v_fpi` values the vault
+holdings at those live prices. Because the prices are read on-chain, no off-chain
+actor can push a value to mint or redeem at a manipulated NAV, and a stale or
+untracked feed makes the note **revert** rather than pricing against a stale value.
+This replaces the keeper-written price slot; the remaining storage input is the
+converted-cash watermark (vault bookkeeping, not a price).
 
 ## §9 Flows
 
